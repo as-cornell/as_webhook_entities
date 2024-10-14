@@ -1,0 +1,118 @@
+{
+	"info": {
+		"_postman_id": "129f0e97-4488-4a51-a951-07558f6be70e",
+		"name": "Webhook Entities",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create node",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "\t{\"event\":\"create\",\"uuid\":\"09876\",\"title\":\"This node was created from a webhook notification\",\"body\":\"Read more of our great blog posts at <a href=\\\"https://www.bounteous.com/insights/\\\">bounteous.com</a>\",\"some_extraneous_value\":\"some additional value we don't need\"}"
+				},
+				"url": {
+					"raw": "http://neville.lndo.site/webhook-entities/listener",
+					"protocol": "http",
+					"host": [
+						"neville",
+						"lndo",
+						"site"
+					],
+					"path": [
+						"webhook-entities",
+						"listener"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update node",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "\t{\"event\":\"update\",\"uuid\":\"09876\",\"title\":\"This node was updated by a webhook notification\",\"body\":\"This body text has been updated\"}"
+				},
+				"url": {
+					"raw": "http://neville.lndo.site/webhook-entities/listener",
+					"protocol": "http",
+					"host": [
+						"neville",
+						"lndo",
+						"site"
+					],
+					"path": [
+						"webhook-entities",
+						"listener"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete node",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "\t{\"event\":\"delete\",\"uuid\":\"09876\"}"
+				},
+				"url": {
+					"raw": "http://neville.lndo.site/webhook-entities/listener",
+					"protocol": "http",
+					"host": [
+						"neville",
+						"lndo",
+						"site"
+					],
+					"path": [
+						"webhook-entities",
+						"listener"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "apikey",
+		"apikey": [
+			{
+				"key": "value",
+				"value": "123456",
+				"type": "string"
+			},
+			{
+				"key": "key",
+				"value": "Authorization",
+				"type": "string"
+			}
+		]
+	},
+	"protocolProfileBehavior": {}
+}

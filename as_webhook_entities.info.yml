@@ -1,0 +1,6 @@
+name: 'A&S Webhook Entities'
+type: module
+description: 'Manage Drupal entities like people records via webhook notifications'
+package: AS
+core_version_requirement: ^9 || ^10
+

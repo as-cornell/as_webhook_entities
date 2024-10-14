@@ -1,0 +1,6 @@
+webhook_entities.settings:
+ title: 'A&S Webhook Entities Settings'
+ description: 'Settings for A&S Webhook Entities integration'
+ parent: system.admin_config_services
+ route_name: webhook_entities.settings
+ weight: 101

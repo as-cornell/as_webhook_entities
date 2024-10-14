@@ -1,2 +1,3 @@
 # as_webhook_entities
-Manage Drupal entities like people records and articles via webhook notifications.
+Manage remote people and articles via webhook notifications.
+Adapted from https://www.bounteous.com/insights/2020/06/08/managing-drupal-webhook-notifications
