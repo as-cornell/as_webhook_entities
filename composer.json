@@ -1,9 +1,9 @@
 {
-    "name": "as-cornell/as_webhooks_entities",
+    "name": "as-cornell/as_webhook_entities",
     "description": "Manage Drupal entities like people records and articles via webhook notifications.",
     "type": "drupal-custom-module",
     "license": "GPL-3.0-or-later",
-    "homepage": "https://it.cornell.edu/custom-web",
+    "homepage": "https://communications.as.cornell.edu",
     "authors": [
         {
             "name": "Mark Wilson",
