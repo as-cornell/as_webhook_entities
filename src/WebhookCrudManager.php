@@ -688,6 +688,11 @@ if ($entity_data->type == 'article') {
       if (!empty($entity_data->field_page_summary)) {
         $existing_entity->field_page_summary->value = $entity_data->field_page_summary;
       }
+      // Update field_body.
+      if (!empty($entity_data->field_body)) {
+        $existing_entity->field_body->value = $entity_data->field_body->value;
+        $existing_entity->field_body->format = $entity_data->field_body->format;
+      }
       // Update field_bylines.
       if (!empty($entity_data->field_bylines)) {
         $existing_entity->field_bylines->value = $entity_data->field_bylines;
