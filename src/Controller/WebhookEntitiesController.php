@@ -97,7 +97,7 @@ class WebhookEntitiesController extends ControllerBase {
     $this->cron->run();
     // log a message for debug
     \Drupal::logger('as_webhook_entities')
-            ->info('Cron run was triggered by WebhookEntitiesController. chrontrigger was: '. json_encode($crontrigger).' cronlock was: '.json_encode($cronlock).'.');
+            ->info('Cron run was triggered by WebhookEntitiesController. crontrigger was: '. json_encode($crontrigger).' cronlock was: '.json_encode($cronlock).'.');
     }
 
 
