@@ -47,6 +47,11 @@ class WebhookSettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('token'),
       '#description' => t('The expected value in the Authorization header, often an API key or similar secret.'),
     ];
+    $form['crontrigger'] = array(
+      '#type' => 'checkbox',
+      '#title' => $this->t('Run cron immediately after receiving add/update/delete via listener.'),
+      '#default_value' => $config->get('crontrigger') ?? FALSE,
+    );
 
     return parent::buildForm($form, $form_state);
   }
@@ -59,6 +64,7 @@ class WebhookSettingsForm extends ConfigFormBase {
     $this->configFactory->getEditable(static::SETTINGS)
       // Save the submitted token value.
       ->set('token', $form_state->getValue('token'))
+      ->set('crontrigger', $form_state->getValue('crontrigger'))
       ->save();
 
     parent::submitForm($form, $form_state);

@@ -5,6 +5,8 @@ namespace Drupal\as_webhook_entities\Controller;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Queue\QueueFactory;
+//use Drupal\Core\Cron;
+use Drupal\Core\ProxyClass\Cron;
 use Drupal\Component\Utility\Html;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,6 +31,14 @@ class WebhookEntitiesController extends ControllerBase {
    */
   protected $queueFactory;
 
+
+  /**
+   * The cron service.
+   *
+   * @var \Drupal\Core\Cron
+   */
+  protected $cron;
+
   /**
    * Constructs a ASWebhookEntitiesController object.
    *
@@ -37,9 +47,10 @@ class WebhookEntitiesController extends ControllerBase {
    * @param Drupal\Core\Queue\QueueFactory $queue
    *  The queue factory.
    */
-  public function __construct(Request $request, QueueFactory $queue) {
+  public function __construct(Request $request, QueueFactory $queue, Cron $cron) {
     $this->request = $request;
     $this->queueFactory = $queue;
+    $this->cron = $cron;
   }
 
   /**
@@ -48,7 +59,8 @@ class WebhookEntitiesController extends ControllerBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('request_stack')->getCurrentRequest(),
-      $container->get('queue')
+      $container->get('queue'),
+      $container->get('cron')
     );
   }
 
@@ -66,12 +78,27 @@ class WebhookEntitiesController extends ControllerBase {
     // Capture the contents of the notification (payload).
     $payload = $this->request->getContent();
 
-
     // Get the queue implementation.
     $queue = $this->queueFactory->get('webhook_entities_processor');
 
     // Add the $payload to the queue.
     $queue->createItem($payload);
+
+    // Run cron for immediate gratification
+    // check config to see if we want to trigger cron
+    $crontrigger = \Drupal::config('as_webhook_entities.settings')->get('crontrigger');
+    //check to see if there's an active cron run
+    $cronlock = \Drupal::lock()->acquire('cron', 0.0);
+    // release the cron lock we just did as a test
+    \Drupal::lock()->release('cron');
+    
+    if ($crontrigger == TRUE && $cronlock == TRUE ){
+    //run cron
+    $this->cron->run();
+    // log a message for debug
+    \Drupal::logger('as_webhook_entities')
+            ->info('Cron run was triggered by WebhookEntitiesController. chrontrigger was: '. json_encode($crontrigger).' cronlock was: '.json_encode($cronlock).'.');
+    }
 
 
 
