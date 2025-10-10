@@ -3,6 +3,9 @@
 namespace Drupal\as_webhook_entities;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\paragraphs\Entity\Paragraph;
+use Drupal\taxonomy\Entity\Term;
+
 use Psr\Log\LoggerInterface;
 
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -620,6 +623,42 @@ if ($entity_data->type == 'person') {
         }else{
           $existing_entity->set('field_academic_role', NULL);
         }
+        //field_overview_research
+        if (!empty($entity_data->field_overview_research)) {
+        // delete existing paragraphs on person node
+        // unset existing paragraphs on person node
+        $existing_entity->set('field_overview_research', NULL);
+        // make paragraphs
+        foreach ($entity_data->field_overview_research as $orr) {
+          // get array of tids from names
+          foreach ($orr->departments_programs as $dept) {
+            $ordeptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dept]);
+          if ($ordpl = reset($ordeptlookup)) {
+            $ordeptarray[] = $ordpl->get('tid')->value;
+          }
+            
+          }
+          // Create a new paragraph
+          $paragraph = Paragraph::create([
+            'type' => 'overview_research',
+            'field_departments_programs' => $ordeptarray,
+            'field_description' => array(
+              'value'=>$orr->overview,
+              'format'=>$orr->format
+              ),
+            'field_person_research_focus' => array(
+              'value'=>$orr->research,
+              'format'=>$orr->format
+              ),
+          ]);
+          //$paragraph->set('field_departments_programs', $dparray2);
+          $paragraph->save();
+          $ordeptarray = [];
+          $existing_entity->get('field_overview_research')->appendItem($paragraph);
+
+        }
+
+      }
       // end just on depts
       }
       // people taxonomy term lookups only on depts and as
