@@ -623,6 +623,8 @@ if ($entity_data->type == 'person') {
         }else{
           $existing_entity->set('field_academic_role', NULL);
         }
+        
+
         //field_overview_research
         if (!empty($entity_data->field_overview_research)) {
         // delete existing paragraphs on person node
