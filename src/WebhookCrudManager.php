@@ -186,6 +186,40 @@ class WebhookCrudManager {
       }
       
       $node_values['field_summary'] = $entity_data->field_summary;
+      
+      //field_overview_research
+      if (!empty($entity_data->field_overview_research)) {
+        
+        // make paragraphs
+        foreach ($entity_data->field_overview_research as $orr) {
+          // get array of tids from names
+          foreach ($orr->departments_programs as $dept) {
+            $ordeptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dept]);
+            if ($ordpl = reset($ordeptlookup)) {
+              $ordeptarray[] = $ordpl->get('tid')->value;
+            }
+          }
+          // Create a new paragraph
+          $paragraph = Paragraph::create([
+            'type' => 'overview_research',
+            'field_departments_programs' => $ordeptarray,
+            'field_description' => array(
+              'value'=>$orr->overview,
+              'format'=>$orr->format
+              ),
+            'field_person_research_focus' => array(
+              'value'=>$orr->research,
+              'format'=>$orr->format
+              ),
+          ]);
+          $paragraph->save();
+          $ordeptarray = [];
+          //$existing_entity->get('field_overview_research')->appendItem($paragraph);
+          $paragraphs[] = $paragraph;
+        }
+        $node_values['field_overview_research'] = $paragraphs;
+      }
+
       $node_values['field_body']['value'] = $entity_data->field_body->value;
       $node_values['field_body']['format'] = $entity_data->field_body->format;
       $node_values['field_education']['value'] = $entity_data->field_education->value;
@@ -625,40 +659,7 @@ if ($entity_data->type == 'person') {
         }
         
 
-        //field_overview_research
-        if (!empty($entity_data->field_overview_research)) {
-        // delete existing paragraphs on person node
-        // unset existing paragraphs on person node
-        $existing_entity->set('field_overview_research', NULL);
-        // make paragraphs
-        foreach ($entity_data->field_overview_research as $orr) {
-          // get array of tids from names
-          foreach ($orr->departments_programs as $dept) {
-            $ordeptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dept]);
-          if ($ordpl = reset($ordeptlookup)) {
-            $ordeptarray[] = $ordpl->get('tid')->value;
-          }
-            
-          }
-          // Create a new paragraph
-          $paragraph = Paragraph::create([
-            'type' => 'overview_research',
-            'field_departments_programs' => $ordeptarray,
-            'field_description' => array(
-              'value'=>$orr->overview,
-              'format'=>$orr->format
-              ),
-            'field_person_research_focus' => array(
-              'value'=>$orr->research,
-              'format'=>$orr->format
-              ),
-          ]);
-          //$paragraph->set('field_departments_programs', $dparray2);
-          $paragraph->save();
-          $ordeptarray = [];
-          $existing_entity->get('field_overview_research')->appendItem($paragraph);
-
-        }
+        
 
       }
       // end just on depts
@@ -696,6 +697,57 @@ if ($entity_data->type == 'person') {
           $existing_entity->set('field_academic_interests', $aiarray);
         }else{
           $existing_entity->set('field_academic_interests', NULL);
+        }
+
+        //field_overview_research
+        if (!empty($entity_data->field_overview_research)) {
+        // delete existing paragraphs on person node
+        $paragraph_field_name = 'field_overview_research';
+        $paragraph_ids = [];
+        if (!$existing_entity->get($paragraph_field_name)->isEmpty()) {
+          foreach ($existing_entity->get($paragraph_field_name) as $item) {
+            $paragraph_ids[] = $item->target_id;
+          }
+        }
+
+        if (!empty($paragraph_ids)) {
+          $paragraph_storage = \Drupal::entityTypeManager()->getStorage('paragraph');
+          $paragraphs_to_delete = $paragraph_storage->loadMultiple($paragraph_ids);
+          $paragraph_storage->delete($paragraphs_to_delete);
+          \Drupal::messenger()->addStatus(t('Deleted @count paragraphs from node @node_id.', ['@count' => count($paragraph_ids), '@node_id' => $existing_entity->id()]));
+        } 
+        
+        // unset existing paragraphs on person node
+        //$existing_entity->set('field_overview_research', NULL);
+        $existing_entity->get($paragraph_field_name)->setValue([]);
+        // make paragraphs
+        foreach ($entity_data->field_overview_research as $orr) {
+          // get array of tids from names
+          foreach ($orr->departments_programs as $dept) {
+            $ordeptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dept]);
+          if ($ordpl = reset($ordeptlookup)) {
+            $ordeptarray[] = $ordpl->get('tid')->value;
+          }
+            
+          }
+          // Create a new paragraph
+          $paragraph = Paragraph::create([
+            'type' => 'overview_research',
+            'field_departments_programs' => $ordeptarray,
+            'field_description' => array(
+              'value'=>$orr->overview,
+              'format'=>$orr->format
+              ),
+            'field_person_research_focus' => array(
+              'value'=>$orr->research,
+              'format'=>$orr->format
+              ),
+          ]);
+          //$paragraph->set('field_departments_programs', $dparray2);
+          $paragraph->save();
+          $ordeptarray = [];
+          $existing_entity->get('field_overview_research')->appendItem($paragraph);
+
         }
     // end just on depts and as
     }
