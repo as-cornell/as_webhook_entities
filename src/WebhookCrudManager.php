@@ -721,6 +721,7 @@ if ($entity_data->type == 'person') {
         
         // make new paragraphs
         foreach ($entity_data->field_overview_research as $orr) {
+          $ordeptarray = [];
           // get array of tids from names
           foreach ($orr->departments_programs as $dept) {
             $ordeptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dept]);
@@ -742,11 +743,8 @@ if ($entity_data->type == 'person') {
               'format'=>$orr->format
               ),
           ]);
-          //$paragraph->set('field_departments_programs', $dparray2);
           $paragraph->save();
-          $ordeptarray = [];
           $existing_entity->get('field_overview_research')->appendItem($paragraph);
-
         }
     // end just on depts and as
     }
