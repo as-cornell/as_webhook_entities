@@ -657,9 +657,7 @@ if ($entity_data->type == 'person') {
         }
         
 
-        
-
-      }
+      
       // end just on depts
       }
       // people taxonomy term lookups only on depts and as
@@ -746,8 +744,8 @@ if ($entity_data->type == 'person') {
           $paragraph->save();
           $existing_entity->get('field_overview_research')->appendItem($paragraph);
         }
-    // end just on depts and as
-    }
+    
+      }
       
     // Update field_link.
     $linkarray = [];
@@ -768,6 +766,8 @@ if ($entity_data->type == 'person') {
     }else{
       $existing_entity->set('field_link', NULL);
     }
+  // end just on depts and as
+  }
 // end person
 }
    
