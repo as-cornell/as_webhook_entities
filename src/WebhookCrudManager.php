@@ -74,7 +74,7 @@ class WebhookCrudManager {
       $node_values['uid'] = $entity_data->uid;
       
     // if node type is person
-      if ($entity_data->type == 'person') {
+    if ($entity_data->type == 'person') {
       $node_values['type'] = 'person';
       $node_values['field_remote_uuid'] = $entity_data->uuid;
       $node_values['field_netid'] = $entity_data->netid;
@@ -131,7 +131,6 @@ class WebhookCrudManager {
         $node_values['field_hide_contact_info'] = FALSE;
       }
       // only on depts and as
-      //if ($host == 'departments.as.cornell.edu' || $host == 'artsci-departments.lndo.site' || $host = 'test-artsci-departments.pantheonsite.io' || $host == 'as.cornell.edu' || $host == 'artsci-as.lndo.site' || $host = 'test-artsci-as.pantheonsite.io' ) {
       if ($domain_schema['schema'] == 'departments' ||  $domain_schema['schema'] == 'as') {
         // Look up field_research_areas by people tid.
         $rauuids = explode(',', $entity_data->field_research_areas);
@@ -169,7 +168,6 @@ class WebhookCrudManager {
       //end just on departments and as
       }
       // only on depts
-      //if ($host == 'departments.as.cornell.edu' || $host == 'artsci-departments.lndo.site' || $host = 'test-artsci-departments.pantheonsite.io') {
       if ($domain_schema['schema'] == 'departments' ) {
         // Look up field_academic_role by people tid.
         $aruuids = explode(',', $entity_data->field_academic_role);
@@ -239,7 +237,7 @@ class WebhookCrudManager {
       }
       
     // if node type is article
-      if ($entity_data->type == 'article') {
+    if ($entity_data->type == 'article') {
       $node_values['type'] = $entity_data->type;
       $node_values['title'] = $entity_data->title;
       $node_values['field_remote_uuid'] = $entity_data->uuid;
@@ -281,9 +279,6 @@ class WebhookCrudManager {
       if (!empty($articlesarray)) {
         $node_values['field_related_articles'] = $articlesarray;
       }
-
-      // article view tags
-      //$node_values['field_article_view_tags']['target_id'] = $entity_data->field_article_view_tags;
       // end article
       }
 
@@ -370,7 +365,6 @@ class WebhookCrudManager {
     if ($dp = reset($dplookup)) {
       $dparray[] = $dp->get('tid')->value;
     // only on depts
-    //if ($host == 'departments.as.cornell.edu' || $host == 'artsci-departments.lndo.site' || $host = 'test-artsci-departments.pantheonsite.io') { 
     if ($domain_schema['schema'] == 'departments' ) {
       $daarray[] = $dp->get('field_domain_access_target_id')->value;
       }
@@ -380,7 +374,6 @@ class WebhookCrudManager {
     $node_values['field_departments_programs'] = $dparray;
   }
   // only on depts
-  //if ($host == 'departments.as.cornell.edu' || $host == 'artsci-departments.lndo.site' || $host = 'test-artsci-departments.pantheonsite.io') {
   if ($domain_schema['schema'] == 'departments' ) {
     if (!empty($daarray)) {
       // add departments_as_cornell_edu by default
@@ -520,9 +513,7 @@ public function updateEntity($existing_entity, $entity_data) {
         $dparray[] = $dp->get('tid')->value;
 
         // only on depts
-        //if ($host == 'departments.as.cornell.edu' || $host == 'artsci-departments.lndo.site') { 
         if ($domain_schema['schema'] == 'departments' ) {
-          //dump($domain_schema['schema']);
           //exit;
           $daarray[] = $dp->get('field_domain_access_target_id')->value;
         }
@@ -537,7 +528,6 @@ public function updateEntity($existing_entity, $entity_data) {
       }
     }
     // only on depts
-    //if ($host == 'departments.as.cornell.edu' || $host == 'artsci-departments.lndo.site') {
     if ($domain_schema['schema'] == 'departments' ) {
       if (!empty($daarray)) {
         array_push($daarray, 'departments_as_cornell_edu');
@@ -572,7 +562,6 @@ if ($entity_data->type == 'person') {
       }
       // update primary college
       if (!empty($entity_data->field_primary_college)) {
-        //$existing_entity->field_primary_college->value = $entity_data->field_primary_college;
         $existing_entity->set('field_primary_college', $entity_data->field_primary_college);
       }
       // update affiliated colleges
@@ -639,9 +628,9 @@ if ($entity_data->type == 'person') {
 
       // people taxonomy term lookups only on depts
       if ($domain_schema['schema'] == 'departments' ) {
-      //if ($host == 'departments.as.cornell.edu' || $host == 'artsci-departments.lndo.site') {
         // Update field_academic_role.
         if (!empty($entity_data->field_academic_role)) {
+          $ararray = [];
           $aruuids = explode(',', $entity_data->field_academic_role);
           foreach ($aruuids as $aruuid) {
             $arlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $aruuid]);
@@ -662,9 +651,9 @@ if ($entity_data->type == 'person') {
       }
       // people taxonomy term lookups only on depts and as
       if ($domain_schema['schema'] == 'departments' ||  $domain_schema['schema'] == 'as') {
-      //if ($host == 'departments.as.cornell.edu' || $host == 'artsci-departments.lndo.site' || $host == 'as.cornell.edu' || $host == 'artsci-as.lndo.site') {
         // Update field_research_areas.
         if (!empty($entity_data->field_research_areas)) {
+          $raarray = [];
           $rauuids = explode(',', $entity_data->field_research_areas);
           foreach ($rauuids as $rauuid) {
             $ralookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $rauuid]);
@@ -681,6 +670,7 @@ if ($entity_data->type == 'person') {
 
         // Update field_academic_interests.
         if (!empty($entity_data->field_academic_interests)) {
+          $aiarray = [];
           $aiuuids = explode(',', $entity_data->field_academic_interests);
           foreach ($aiuuids as $aiuuid) {
             $ailookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $aiuuid]);
@@ -714,7 +704,6 @@ if ($entity_data->type == 'person') {
         } 
         
         // unset existing paragraphs on person node
-        //$existing_entity->set('field_overview_research', NULL);
         $existing_entity->get($paragraph_field_name)->setValue([]);
         
         // make new paragraphs
@@ -748,14 +737,12 @@ if ($entity_data->type == 'person') {
       }
       
     // Update field_link.
-    $linkarray = [];
     if (!empty($entity_data->field_links)) {
+      $linkarray = [];
       $links = explode(',', $entity_data->field_links);
       foreach ($links as $key =>$link) {
         $linkarray[$key]['uri'] = $link;
       }
-    }
-    if (!empty($entity_data->field_links_titles)) {
       $titles = explode(',', $entity_data->field_links_titles);
       foreach ($titles as $key =>$title) {
         $linkarray[$key]['title'] = $title;
