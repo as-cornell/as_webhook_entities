@@ -229,19 +229,17 @@ class WebhookCrudManager {
       $node_values['field_education']['format'] = $entity_data->field_education->format;
       $node_values['field_keywords']['value'] = $entity_data->field_keywords->value;
       $node_values['field_keywords']['format'] = $entity_data->field_keywords->format;
-      // set field_link from merged array
-      if (!empty($entity_data->field_links)) {
-        $links = explode(',', $entity_data->field_links);
-        $titles = explode(',', $entity_data->field_links_titles);
-        foreach ($links as $key =>$link) {
-          $linkarray[$key]['uri'] = $link;
-          }
-        foreach ($titles as $key =>$title) {
-          $linkarray[$key]['title'] = $title;
-          }
-        $node_values['field_link'] = $linkarray;
-        }
+    // set field_link from merged array
+    if (!empty($entity_data->field_links)) {
+      $linkarray = [];
+      foreach ($entity_data->field_links as $link) {
+        $linkarray[] = array('uri'=>$link->uri,'title'=>$link->title);
       }
+    }
+    if (!empty($linkarray)) {
+      $node_values['field_link'] = $linkarray;
+    }
+  }
       
     // if node type is article
     if ($entity_data->type == 'article') {
@@ -760,13 +758,8 @@ if ($entity_data->type == 'person') {
     // Update field_link.
     if (!empty($entity_data->field_links)) {
       $linkarray = [];
-      $links = explode(',', $entity_data->field_links);
-      foreach ($links as $key =>$link) {
-        $linkarray[$key]['uri'] = $link;
-      }
-      $titles = explode(',', $entity_data->field_links_titles);
-      foreach ($titles as $key =>$title) {
-        $linkarray[$key]['title'] = $title;
+      foreach ($entity_data->field_links as $link) {
+        $linkarray[] = array('uri'=>$link->uri,'title'=>$link->title);
       }
     }
     if (!empty($linkarray)) {
