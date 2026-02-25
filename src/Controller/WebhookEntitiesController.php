@@ -5,9 +5,9 @@ namespace Drupal\as_webhook_entities\Controller;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Queue\QueueFactory;
-//use Drupal\Core\Cron;
 use Drupal\Core\ProxyClass\Cron;
 use Drupal\Component\Utility\Html;
+use Drupal\key\KeyRepositoryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -31,7 +31,6 @@ class WebhookEntitiesController extends ControllerBase {
    */
   protected $queueFactory;
 
-
   /**
    * The cron service.
    *
@@ -40,17 +39,29 @@ class WebhookEntitiesController extends ControllerBase {
   protected $cron;
 
   /**
+   * The key repository service.
+   *
+   * @var \Drupal\key\KeyRepositoryInterface
+   */
+  protected $keyRepository;
+
+  /**
    * Constructs a ASWebhookEntitiesController object.
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
-   *  The HTTP request object.
-   * @param Drupal\Core\Queue\QueueFactory $queue
-   *  The queue factory.
+   *   The HTTP request object.
+   * @param \Drupal\Core\Queue\QueueFactory $queue
+   *   The queue factory.
+   * @param \Drupal\Core\Cron $cron
+   *   The cron service.
+   * @param \Drupal\key\KeyRepositoryInterface $key_repository
+   *   The key repository service.
    */
-  public function __construct(Request $request, QueueFactory $queue, Cron $cron) {
+  public function __construct(Request $request, QueueFactory $queue, Cron $cron, KeyRepositoryInterface $key_repository) {
     $this->request = $request;
     $this->queueFactory = $queue;
     $this->cron = $cron;
+    $this->keyRepository = $key_repository;
   }
 
   /**
@@ -60,7 +71,8 @@ class WebhookEntitiesController extends ControllerBase {
     return new static(
       $container->get('request_stack')->getCurrentRequest(),
       $container->get('queue'),
-      $container->get('cron')
+      $container->get('cron'),
+      $container->get('key.repository')
     );
   }
 
@@ -116,8 +128,15 @@ class WebhookEntitiesController extends ControllerBase {
     // Get the access token from the headers.
     $incoming_token = $this->request->headers->get('Authorization');
 
-    // Retrieve the token value stored in config.
-    $stored_token = \Drupal::config('as_webhook_entities.settings')->get('token');
+    // Retrieve the token value from Key module.
+    $key = $this->keyRepository->getKey('as_webhook_entities_token');
+    $stored_token = $key ? $key->getKeyValue() : NULL;
+
+    // If no token is configured, deny access.
+    if (empty($stored_token)) {
+      \Drupal::logger('as_webhook_entities')->error('Webhook authorization token is not configured. Configure it at /admin/config/services/webhook-entities');
+      return AccessResult::forbidden('Authorization token not configured');
+    }
 
     // Compare the stored token value to the token in each notification.
     // If they match, allow access to the route.
