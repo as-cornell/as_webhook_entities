@@ -546,15 +546,13 @@ if ($entity_data->type == 'person') {
       }
       // Look up field_primary_department tid by name.
       if (!empty($entity_data->field_primary_department)){
-        $pdnames = $entity_data->field_primary_department;
-        foreach ($pdnames as $pdname) {
-          $pdlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $pdname]);
-          if ($pd = reset($pdlookup)) {
-            $pdarray[] = $pd->get('tid')->value;
-          }
+        $pdname = $entity_data->field_primary_department;
+        $pdlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $pdname]);
+        if ($pd = reset($pdlookup)) {
+          $pdarray[] = $pd->get('tid')->value;
         }
         if (!empty($pdarray)) {
-          $existing_entity->set('field_primary_department', $pdarray);
+          $existing_entity->set('field_primary_department', $entity_data->field_primary_department);
         }
       }
       // update primary college
@@ -611,13 +609,13 @@ if ($entity_data->type == 'person') {
       }
       // Update field_person_type.
       if (!empty($entity_data->field_person_type)) {
-        $ptnames = $entity_data->field_person_type;
-        foreach ($ptnames as $ptname) {
+        $ptname = $entity_data->field_person_type;
+        //foreach ($ptnames as $ptname) {
           $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
           if ($pt = reset($ptlookup)) {
             $ptarray[] = $pt->get('tid')->value;
           }
-        }
+        //}
       }
       if (!empty($ptarray)) {
         $existing_entity->set('field_person_type', $ptarray);
