@@ -19,7 +19,7 @@ Current maintainers for Drupal 10:
 - Configure the global module settings: /admin/config/as_webhook_entities/settings
 - Runs on cron
 - Cron can be triggered to run on reciept (crontrigger setting)
-- Logs create/update/delete (and corn runs) as as_webhook_entities
+- Logs create/update/delete (on cron run) as as_webhook_entities
 
 ## FUNCTIONS
 - class WebhookEntitiesController
