@@ -83,24 +83,20 @@ class WebhookCrudManager {
       $node_values['field_portrait_image_path'] = $entity_data->field_portrait_image_path;
       // Look up field_person_type by name, never null
       $ptnames = $entity_data->field_person_type;
-      foreach ($ptnames as $ptname) {
         $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
         if ($pt = reset($ptlookup)) {
           $ptarray[] = $pt->get('tid')->value;
         }
-      }
       if (!empty($ptarray)) {
         $node_values['field_person_type'] = $ptarray;
       }
       // Look up field_primary_department tid by department name.
       if (!empty($entity_data->field_primary_department)) {
         $pdname = $entity_data->field_primary_department;
-        //foreach ($pdnames as $pdname) {
-          $pdlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $pdname]);
-          if ($pd = reset($pdlookup)) {
-            $pdarray[] = $pd->get('tid')->value;
-          }
-        //}
+        $pdlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $pdname]);
+        if ($pd = reset($pdlookup)) {
+          $pdarray[] = $pd->get('tid')->value;
+        }
       }
       if (!empty($pdarray)) {
         $node_values['field_primary_department'] = $pdarray;
@@ -334,12 +330,10 @@ class WebhookCrudManager {
     $node_values['field_netid'] = $entity_data->netid;
     // Look up field_person_type by name, never null
     $ptnames = $entity_data->field_person_type;
-    //foreach ($ptnames as $ptname) {
       $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
       if ($pt = reset($ptlookup)) {
         $ptarray[] = $pt->get('tid')->value;
       }
-    //}
     if (!empty($ptarray)) {
       $node_values['field_person_type'] = $ptarray;
     }
@@ -610,12 +604,10 @@ if ($entity_data->type == 'person') {
       // Update field_person_type.
       if (!empty($entity_data->field_person_type)) {
         $ptname = $entity_data->field_person_type;
-        //foreach ($ptnames as $ptname) {
-          $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
-          if ($pt = reset($ptlookup)) {
-            $ptarray[] = $pt->get('tid')->value;
-          }
-        //}
+        $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
+        if ($pt = reset($ptlookup)) {
+          $ptarray[] = $pt->get('tid')->value;
+        }
       }
       if (!empty($ptarray)) {
         $existing_entity->set('field_person_type', $ptarray);
