@@ -82,7 +82,7 @@ class WebhookCrudManager {
       $node_values['field_job_title'] = $entity_data->field_job_title;
       $node_values['field_portrait_image_path'] = $entity_data->field_portrait_image_path;
       // Look up field_person_type by name, never null
-      $ptnames = $entity_data->field_person_type;
+      $ptname = $entity_data->field_person_type;
         $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
         if ($pt = reset($ptlookup)) {
           $ptarray[] = $pt->get('tid')->value;
