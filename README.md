@@ -6,6 +6,8 @@
 Manage remote people, articles and taxonomy termsvia webhook notifications.
 Adapted from https://www.bounteous.com/insights/2020/06/08/managing-drupal-webhook-notifications
 
+![Carrier Landing](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXp1MHdlcmZlYmw1Njg0OXgzcW52OGlnM3oyeXNvcXF5ZWM0bnB3YSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Zb6KTAShJAGfkZoIIb/giphy.gif "catch it")
+
 ## MAINTAINERS
 
 Current maintainers for Drupal 10:
