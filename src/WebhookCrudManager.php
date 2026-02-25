@@ -329,7 +329,7 @@ class WebhookCrudManager {
     $node_values['field_person_last_name'] = $entity_data->field_person_last_name;
     $node_values['field_netid'] = $entity_data->netid;
     // Look up field_person_type by name, never null
-    $ptnames = $entity_data->field_person_type;
+    $ptname = $entity_data->field_person_type;
       $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
       if ($pt = reset($ptlookup)) {
         $ptarray[] = $pt->get('tid')->value;
@@ -871,7 +871,7 @@ if ($entity_data->type == 'media_report_person') {
         $existing_entity->field_remote_uuid->value = $entity_data->uuid;
     }
     if (!empty($entity_data->field_person_type)) {
-      $ptnames = $entity_data->field_person_type;
+      $ptname = $entity_data->field_person_type;
       foreach ($ptnames as $ptname) {
         $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
         if ($pt = reset($ptlookup)) {
