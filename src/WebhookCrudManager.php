@@ -82,7 +82,6 @@ class WebhookCrudManager {
       $node_values['field_job_title'] = $entity_data->field_job_title;
       $node_values['field_portrait_image_path'] = $entity_data->field_portrait_image_path;
       // Look up field_person_type by name, never null
-      //$ptnames = explode('|', $entity_data->field_person_type);
       $ptnames = $entity_data->field_person_type;
       foreach ($ptnames as $ptname) {
         $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
@@ -95,7 +94,6 @@ class WebhookCrudManager {
       }
       // Look up field_primary_department tid by department name.
       if (!empty($entity_data->field_primary_department)) {
-        //$pdnames = explode('|', $entity_data->field_primary_department);
         $pdnames = $entity_data->field_primary_department;
         foreach ($pdnames as $pdname) {
           $pdlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $pdname]);
@@ -113,7 +111,6 @@ class WebhookCrudManager {
       }
       // affiliated colleges
       if (!empty($entity_data->field_affiliated_colleges)) {
-        //$acarray = explode('|', $entity_data->field_affiliated_colleges);
         $acarray = $entity_data->field_affiliated_colleges;
         if (!empty($acarray)) {
           $node_values['field_affiliated_colleges'] = $acarray;
@@ -136,7 +133,6 @@ class WebhookCrudManager {
       // only on depts and as
       if ($domain_schema['schema'] == 'departments' ||  $domain_schema['schema'] == 'as') {
         // Look up field_research_areas by people tid.
-        //$rauuids = explode(',', $entity_data->field_research_areas);
         $rauuids = $entity_data->field_research_areas;
         foreach ($rauuids as $rauuid) {
           $ralookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $rauuid]);
@@ -148,7 +144,6 @@ class WebhookCrudManager {
           $node_values['field_research_areas'] = $raarray;
         }
         // Look up field_academic_role by people tid.
-        //$aruuids = explode(',', $entity_data->field_academic_role);
         $aruuids = $entity_data->field_academic_role;
         foreach ($aruuids as $aruuid) {
           $arlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $aruuid]);
@@ -160,7 +155,6 @@ class WebhookCrudManager {
           $node_values['field_academic_role'] = $ararray;
         }
         // Look upfield_academic_interests by people tid.
-        //$aiuuids = explode(',', $entity_data->field_academic_interests);
         $aiuuids = $entity_data->field_academic_interests;
         foreach ($aiuuids as $aiuuid) {
           $ailookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $aiuuid]);
@@ -176,7 +170,6 @@ class WebhookCrudManager {
       // only on depts
       if ($domain_schema['schema'] == 'departments' ) {
         // Look up field_academic_role by people tid.
-        //$aruuids = explode(',', $entity_data->field_academic_role);
         $aruuids = $entity_data->field_academic_role;
         foreach ($aruuids as $aruuid) {
           $arlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $aruuid]);
@@ -262,7 +255,6 @@ class WebhookCrudManager {
 
       
       // look up nids for array of related people using remote uuid
-      //$peopleuuids = explode(',', $entity_data->field_related_people);
       $peopleuuids = $entity_data->field_related_people;
       foreach ($peopleuuids as $personuuid) {
         $personlookup = $this->entityTypeManager->getStorage('node')->loadByProperties(['field_remote_uuid' => $personuuid]);
@@ -275,7 +267,6 @@ class WebhookCrudManager {
       }
       
       // look up nids for array of related articles using remote uuid
-      //$articleuuids = explode(',', $entity_data->field_related_articles);
       $articleuuids = $entity_data->field_related_articles;
       foreach ($articleuuids as $articleuuid) {
         $articlelookup = $this->entityTypeManager->getStorage('node')->loadByProperties(['field_remote_uuid' => $articleuuid]);
@@ -300,7 +291,6 @@ class WebhookCrudManager {
     $node_values['body'] = $entity_data->body;
     $node_values['summary'] = $entity_data->summary;
     // field_related_department_program
-    //$dpnames = explode('|', $entity_data->field_departments_programs);
     $dpnames = $entity_data->field_departments_programs;
     foreach ($dpnames as $dpname) {
       $dplookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dpname]);
@@ -312,7 +302,6 @@ class WebhookCrudManager {
       $node_values['field_related_department_program'] = $dparray;
     }
    // look up nids for array of related people using remote uuid
-    //$peopleuuids = explode(',', $entity_data->field_related_people);
     $peopleuuids = $entity_data->field_related_people;
     foreach ($peopleuuids as $personuuid) {
       $personlookup = $this->entityTypeManager->getStorage('node')->loadByProperties(['field_remote_uuid' => $personuuid]);
@@ -344,7 +333,6 @@ class WebhookCrudManager {
     $node_values['field_person_last_name'] = $entity_data->field_person_last_name;
     $node_values['field_netid'] = $entity_data->netid;
     // Look up field_person_type by name, never null
-    //$ptnames = explode('|', $entity_data->field_person_type);
     $ptnames = $entity_data->field_person_type;
     foreach ($ptnames as $ptname) {
       $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
@@ -369,7 +357,6 @@ class WebhookCrudManager {
   }
 
   // Set field_departments_programs and simultaneously map domain access on departments
-  //$dpnames = explode('|', $entity_data->field_departments_programs);
   $dpnames = $entity_data->field_departments_programs;
   foreach ($dpnames as $dpname) {
     $dplookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dpname]);
@@ -441,7 +428,6 @@ class WebhookCrudManager {
       }
       if ($domain_schema['schema'] == 'departments' ) {
         // if on departments, use field_departments_programs to map domain access to department names
-        //$dpnames = explode('|', $entity_data->field_departments_programs);
         $dpnames = $entity_data->field_departments_programs;
         foreach ($dpnames as $dpname) {
           $dplookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dpname]);
@@ -518,7 +504,6 @@ public function updateEntity($existing_entity, $entity_data) {
       $existing_entity->field_portrait_image_alt->value = $entity_data->field_portrait_image_alt;
     }
     // Set field_departments_programs and simultaneously map domain access on departments
-    //$dpnames = explode('|', $entity_data->field_departments_programs);
     $dpnames = $entity_data->field_departments_programs;
     foreach ($dpnames as $dpname) {
       $dplookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dpname]);
@@ -527,7 +512,6 @@ public function updateEntity($existing_entity, $entity_data) {
 
         // only on depts
         if ($domain_schema['schema'] == 'departments' ) {
-          //exit;
           $daarray[] = $dp->get('field_domain_access_target_id')->value;
         }
       }
@@ -562,7 +546,6 @@ if ($entity_data->type == 'person') {
       }
       // Look up field_primary_department tid by name.
       if (!empty($entity_data->field_primary_department)){
-        //$pdnames = explode('|', $entity_data->field_primary_department);
         $pdnames = $entity_data->field_primary_department;
         foreach ($pdnames as $pdname) {
           $pdlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $pdname]);
@@ -579,7 +562,6 @@ if ($entity_data->type == 'person') {
         $existing_entity->set('field_primary_college', $entity_data->field_primary_college);
       }
       // update affiliated colleges
-      //$acarray = explode('|', $entity_data->field_affiliated_colleges);
       $acarray = $entity_data->field_affiliated_colleges;
       if (!empty($acarray)) {
       $existing_entity->set('field_affiliated_colleges', $acarray);
@@ -629,7 +611,6 @@ if ($entity_data->type == 'person') {
       }
       // Update field_person_type.
       if (!empty($entity_data->field_person_type)) {
-        //$ptnames = explode('|', $entity_data->field_person_type);
         $ptnames = $entity_data->field_person_type;
         foreach ($ptnames as $ptname) {
           $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
@@ -647,7 +628,6 @@ if ($entity_data->type == 'person') {
         // Update field_academic_role.
         if (!empty($entity_data->field_academic_role)) {
           $ararray = [];
-          //$aruuids = explode(',', $entity_data->field_academic_role);
           $aruuids = $entity_data->field_academic_role;
           foreach ($aruuids as $aruuid) {
             $arlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $aruuid]);
@@ -671,7 +651,6 @@ if ($entity_data->type == 'person') {
         // Update field_research_areas.
         if (!empty($entity_data->field_research_areas)) {
           $raarray = [];
-          //$rauuids = explode(',', $entity_data->field_research_areas);
           $rauuids = $entity_data->field_research_areas;
           foreach ($rauuids as $rauuid) {
             $ralookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $rauuid]);
@@ -689,7 +668,6 @@ if ($entity_data->type == 'person') {
         // Update field_academic_interests.
         if (!empty($entity_data->field_academic_interests)) {
           $aiarray = [];
-          //$aiuuids = explode(',', $entity_data->field_academic_interests);
           $aiuuids = $entity_data->field_academic_interests;
           foreach ($aiuuids as $aiuuid) {
             $ailookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['field_people_tid' => $aiuuid]);
@@ -818,7 +796,6 @@ if ($entity_data->type == 'article') {
       }
       // Update field_related_people.
       if (!empty($entity_data->field_related_people)) {
-        //$peopleuuids = explode(',', $entity_data->field_related_people);
         $peopleuuids = $entity_data->field_related_people;
         foreach ($peopleuuids as $personuuid) {
           $personlookup = $this->entityTypeManager->getStorage('node')->loadByProperties(['field_remote_uuid' => $personuuid]);
@@ -832,7 +809,6 @@ if ($entity_data->type == 'article') {
       }
       // Update field_related_articles.
       if (!empty($entity_data->field_related_articles)) {
-        //$articleuuids = explode(',', $entity_data->field_related_articles);
         $articleuuids = $entity_data->field_related_articles;
         foreach ($articleuuids as $articleuuid) {
           $articlelookup = $this->entityTypeManager->getStorage('node')->loadByProperties(['field_remote_uuid' => $articleuuid]);
@@ -879,7 +855,6 @@ if ($entity_data->type == 'media_report_entry') {
     $existing_entity->set('field_news_link', NULL);
   }
   if (!empty($entity_data->field_related_people)) {
-    $peopleuuids = explode(',', $entity_data->field_related_people);
     $peopleuuids = $entity_data->field_related_people;
     foreach ($peopleuuids as $personuuid) {
       $personlookup = $this->entityTypeManager->getStorage('node')->loadByProperties(['field_remote_uuid' => $personuuid]);
@@ -906,7 +881,6 @@ if ($entity_data->type == 'media_report_person') {
         $existing_entity->field_remote_uuid->value = $entity_data->uuid;
     }
     if (!empty($entity_data->field_person_type)) {
-      //$ptnames = explode('|', $entity_data->field_person_type);
       $ptnames = $entity_data->field_person_type;
       foreach ($ptnames as $ptname) {
         $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
