@@ -197,14 +197,14 @@ class WebhookCrudManager {
           $paragraph = Paragraph::create([
             'type' => 'overview_research',
             'field_departments_programs' => $ordeptarray,
-            'field_description' => array(
-              'value'=>$orr->overview,
-              'format'=>$orr->format
-              ),
-            'field_person_research_focus' => array(
-              'value'=>$orr->research,
-              'format'=>$orr->format
-              ),
+            'field_description' => [
+              'value' => $orr->overview,
+              'format' => $orr->format,
+            ],
+            'field_person_research_focus' => [
+              'value' => $orr->research,
+              'format' => $orr->format,
+            ],
           ]);
           $paragraph->save();
           $paragraphs[] = $paragraph;
@@ -222,7 +222,7 @@ class WebhookCrudManager {
     if (!empty($entity_data->field_links)) {
       $linkarray = [];
       foreach ($entity_data->field_links as $link) {
-        $linkarray[] = array('uri'=>$link->uri,'title'=>$link->title);
+        $linkarray[] = ['uri' => $link->uri, 'title' => $link->title];
       }
     }
     if (!empty($linkarray)) {
@@ -708,14 +708,14 @@ if ($entity_data->type == 'person') {
           $paragraph = Paragraph::create([
             'type' => 'overview_research',
             'field_departments_programs' => $ordeptarray,
-            'field_description' => array(
-              'value'=>$orr->overview,
-              'format'=>$orr->format
-              ),
-            'field_person_research_focus' => array(
-              'value'=>$orr->research,
-              'format'=>$orr->format
-              ),
+            'field_description' => [
+              'value' => $orr->overview,
+              'format' => $orr->format,
+            ],
+            'field_person_research_focus' => [
+              'value' => $orr->research,
+              'format' => $orr->format,
+            ],
           ]);
           $paragraph->save();
           $existing_entity->get('field_overview_research')->appendItem($paragraph);
@@ -727,7 +727,7 @@ if ($entity_data->type == 'person') {
     if (!empty($entity_data->field_links)) {
       $linkarray = [];
       foreach ($entity_data->field_links as $link) {
-        $linkarray[] = array('uri'=>$link->uri,'title'=>$link->title);
+        $linkarray[] = ['uri' => $link->uri, 'title' => $link->title];
       }
     }
     if (!empty($linkarray)) {
@@ -983,12 +983,12 @@ if ($updated) {
    *   Current domain hostname and project -- as,departments,mediareport.
    */
   private function getDomainSchema() {
-    // returns current domain schema 
+    // returns current domain schema
     $domain_schema = [];
     $host = \Drupal::request()->getHost();
-    $as_domains = array('artsci-as.lndo.site','dev-artsci-as.pantheonsite.io','test-artsci-as.pantheonsite.io','live-artsci-as.pantheonsite.io','as.cornell.edu');
-    $departments_domains = array('artsci-departments.lndo.site','dev-artsci-departments.pantheonsite.io','test-artsci-departments.pantheonsite.io','live-artsci-departments.pantheonsite.io','departments.as.cornell.edu' );
-    $mediareport_domains = array('artsci-mediareport.lndo.site','dev-artsci-mediareport.pantheonsite.io','test-artsci-mediareport.pantheonsite.io','live-artsci-mediareport.pantheonsite.io','mediareport.as.cornell.edu');
+    $as_domains = ['artsci-as.lndo.site', 'dev-artsci-as.pantheonsite.io', 'test-artsci-as.pantheonsite.io', 'live-artsci-as.pantheonsite.io', 'as.cornell.edu'];
+    $departments_domains = ['artsci-departments.lndo.site', 'dev-artsci-departments.pantheonsite.io', 'test-artsci-departments.pantheonsite.io', 'live-artsci-departments.pantheonsite.io', 'departments.as.cornell.edu'];
+    $mediareport_domains = ['artsci-mediareport.lndo.site', 'dev-artsci-mediareport.pantheonsite.io', 'test-artsci-mediareport.pantheonsite.io', 'live-artsci-mediareport.pantheonsite.io', 'mediareport.as.cornell.edu'];
 
     if (!empty($host)) {
         $domain_schema['domain'] = $host;
