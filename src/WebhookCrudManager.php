@@ -878,12 +878,10 @@ if ($entity_data->type == 'media_report_person') {
     }
     if (!empty($entity_data->field_person_type)) {
       $ptname = $entity_data->field_person_type;
-      foreach ($ptnames as $ptname) {
         $ptlookup = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $ptname]);
         if ($pt = reset($ptlookup)) {
           $ptarray[] = $pt->get('tid')->value;
         }
-      }
       if (!empty($ptarray)) {
         $existing_entity->set('field_person_type', $ptarray);
       }
