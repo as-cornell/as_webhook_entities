@@ -368,8 +368,10 @@ class WebhookCrudManager {
   // only on depts
   if ($domain_schema['schema'] == 'departments' ) {
     if (!empty($daarray)) {
-      // add departments_as_cornell_edu by default
-      array_push($daarray, 'departments_as_cornell_edu');
+      // alphabetize existing array items
+      sort($daarray);
+      // add departments_as_cornell_edu to beginning of array by default
+      array_unshift($daarray, 'departments_as_cornell_edu');
       $node_values['field_domain_access'] = $daarray;
     }
   }
@@ -430,7 +432,10 @@ class WebhookCrudManager {
           }
         }
         if (!empty($daarray)) {
-          array_push($daarray, 'departments_as_cornell_edu');
+          // alphabetize existing array items
+          sort($daarray);
+          // add departments_as_cornell_edu to beginning of array by default
+          array_unshift($daarray, 'departments_as_cornell_edu');
           $node_values['domain_access'] = $daarray;
         }
       }
@@ -521,7 +526,8 @@ public function updateEntity($existing_entity, $entity_data) {
     // only on depts
     if ($domain_schema['schema'] == 'departments' ) {
       if (!empty($daarray)) {
-        array_push($daarray, 'departments_as_cornell_edu');
+        // add departments_as_cornell_edu to beginning of array by default
+        array_unshift($daarray, 'departments_as_cornell_edu');
         if ($entity_data->type != 'term') {
           $existing_entity->set('field_domain_access', $daarray);
         }
