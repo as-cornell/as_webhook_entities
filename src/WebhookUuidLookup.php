@@ -28,39 +28,32 @@ class WebhookUuidLookup {
   public function __construct(EntityTypeManagerInterface $entityTypeManager) {
     $this->entityTypeManager = $entityTypeManager;
   }
-//add type here called from entities queue
-  public function findEntity($uuid,$type) {
+  /**
+   * Finds an existing entity matching the given UUID and type.
+   *
+   * @param string $uuid
+   *   The remote UUID from the webhook payload.
+   * @param string $type
+   *   The webhook entity type (e.g., 'article', 'person', 'term').
+   *
+   * @return \Drupal\Core\Entity\EntityInterface|false
+   *   The matched entity, or FALSE if none found.
+   */
+  public function findEntity($uuid, $type) {
+    $lookup_map = [
+      'article'             => ['node', 'field_remote_uuid'],
+      'person'              => ['node', 'field_remote_uuid'],
+      'media_report_entry'  => ['node', 'field_remote_uuid'],
+      'media_report_person' => ['node', 'field_people_uuid'],
+      'term'                => ['taxonomy_term', 'field_people_tid'],
+    ];
 
-    if ($type == 'person') {
-    $entities = $this->entityTypeManager
-      ->getStorage('node')
-      ->loadByProperties(['field_remote_uuid' => $uuid]);
-    }
-    if ($type == 'article') {
-    $entities = $this->entityTypeManager
-      ->getStorage('node')
-      ->loadByProperties(['field_remote_uuid' => $uuid]);
-    }
-    if ($type == 'media_report_person') {
-    $entities = $this->entityTypeManager
-      ->getStorage('node')
-      ->loadByProperties(['field_people_uuid' => $uuid]);
-    }
-    if ($type == 'media_report_entry') {
-    $entities = $this->entityTypeManager
-      ->getStorage('node')
-      ->loadByProperties(['field_remote_uuid' => $uuid]);
-    }
-    if ($type == 'term') {
-    $entities = $this->entityTypeManager
-      ->getStorage('taxonomy_term')
-      ->loadByProperties(['field_people_tid' => $uuid]);
+    if (!isset($lookup_map[$type])) {
+      return FALSE;
     }
 
-    if ($existing_entity = reset($entities)) {
-      return $existing_entity;
-    }
-
-    return FALSE;
+    [$storage_type, $field] = $lookup_map[$type];
+    $entities = $this->entityTypeManager->getStorage($storage_type)->loadByProperties([$field => $uuid]);
+    return reset($entities) ?: FALSE;
   }
 }

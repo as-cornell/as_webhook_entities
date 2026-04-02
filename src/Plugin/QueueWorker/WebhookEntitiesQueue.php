@@ -90,76 +90,59 @@ class WebhookEntitiesQueue extends QueueWorkerBase implements ContainerFactoryPl
       // Only process the notification if it contains a UUID.
       if (isset($entity_data->uuid)) {
 
-        // Remove all values we won't be using.
-        $unused_value_keys = ['an_unused_value', 'another_unused_value'];
-        foreach ($unused_value_keys as $key) {
-          if (isset($entity_data->{$key})) {
-            unset($entity_data->{$key});
-          }
-        }
-
-        // Determine whether an existing Drupal entity already
-        // corresponds to the incoming UUID.
-        // added type to handle terms
-        $existing_entity = isset($entity_data->uuid) ? $this->uuidLookup->findEntity($entity_data->uuid,$entity_data->type) : NULL;
+        // Determine whether an existing Drupal entity corresponds to the UUID.
+        $existing_entity = $this->uuidLookup->findEntity($entity_data->uuid, $entity_data->type);
 
         // Handle create events.
         if ($entity_data->event == 'create') {
-          // Create a new entity if one doesn't already exist.
           if (!$existing_entity) {
-            if ($entity_data->type == 'term') {
-              $this->entityCrud->createTermEntity($entity_data);
-            }else{
-              $this->entityCrud->createEntity($entity_data);
-            }
+            $this->dispatchCreate($entity_data);
           }
-          // Otherwise log a warning.
           else {
             $this->logger->warning('Webhook create notification received for UUID @uuid but corresponding entity @id already exists', [
               '@uuid' => $entity_data->uuid,
-              '@id' => $existing_entity->id()
+              '@id' => $existing_entity->id(),
             ]);
           }
         }
-        // Handle other modification events.
+        // Handle update and delete events.
         else {
-          // Ensure a Drupal entity to modify exists.
           if ($existing_entity) {
-            switch($entity_data->event) {
-              case 'update' :
-                // Update an entity by passing it and the changed values to our CRUD worker.
+            switch ($entity_data->event) {
+              case 'update':
                 $this->entityCrud->updateEntity($existing_entity, $entity_data);
                 break;
 
-              case 'delete' :
-                // Call the delete method in our CRUD worker on the entity.
+              case 'delete':
                 $this->entityCrud->deleteEntity($existing_entity);
                 break;
             }
           }
-          // Throw a warning when there is no existing entity to modify.
-          // rewire to create one instead, unless we're deleting
-          else {
-           // $this->logger->warning('Webhook notification received for UUID @uuid but no corresponding Drupal entity exists', [
-              //'@uuid' => $entity_data->uuid
-           // ]);
-            if ($entity_data->event != 'delete') {
-             if ($entity_data->type == 'term') {
-              $this->entityCrud->createTermEntity($entity_data);
-              }else{
-                $this->entityCrud->createEntity($entity_data);
-              }
-            }
+          // No existing entity — create one unless this is a delete event.
+          elseif ($entity_data->event != 'delete') {
+            $this->dispatchCreate($entity_data);
           }
         }
       }
       // Throw a warning if the payload doesn't contain a UUID.
       else {
         $this->logger->warning('Webhook notification received but not processed because UUID was missing', [
-              '@uuid' => $entity_data->uuid
-          ]);
+          '@uuid' => $entity_data->uuid,
+        ]);
       }
     }
+  }
+
+  /**
+   * Dispatches an entity creation to the appropriate CRUD method by type.
+   *
+   * @param object $entity_data
+   *   The decoded webhook payload.
+   */
+  private function dispatchCreate(object $entity_data): void {
+    $entity_data->type === 'term'
+      ? $this->entityCrud->createTermEntity($entity_data)
+      : $this->entityCrud->createEntity($entity_data);
   }
 
 }
