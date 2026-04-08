@@ -34,7 +34,6 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     $node_values['field_landscape_image_alt'] = $entity_data->field_landscape_image_alt ?? NULL;
     $node_values['field_thumbnail_image_path'] = $entity_data->field_thumbnail_image_path ?? NULL;
     $node_values['field_thumbnail_image_alt'] = $entity_data->field_thumbnail_image_alt ?? NULL;
-    $node_values['field_page_summary'] = $entity_data->field_page_summary ?? NULL;
 
     if (!empty($entity_data->field_body)) {
       $node_values['field_body'] = ['value' => $entity_data->field_body->value, 'format' => $entity_data->field_body->format];
@@ -54,6 +53,9 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
       if (!empty($tids)) {
         $node_values['field_related_disciplines'] = $tids;
       }
+    }
+    if (isset($field_definitions['field_page_summary'])) {
+      $node_values['field_page_summary'] = $entity_data->field_page_summary ?? NULL;
     }
     if (isset($field_definitions['field_summary'])) {
       $node_values['field_summary'] = $entity_data->field_summary ?? NULL;
