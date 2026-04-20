@@ -111,6 +111,7 @@ class PersonWebhookHandler extends WebhookHandlerBase {
    * {@inheritdoc}
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
+    $existing_entity->set('field_portrait_image_path', $entity_data->field_portrait_image_path ?? NULL);
     $existing_entity->set('field_netid', $entity_data->netid ?? NULL);
     $existing_entity->set('field_person_last_name', $entity_data->field_person_last_name ?? NULL);
     $existing_entity->set('field_summary', $entity_data->field_summary ?? NULL);

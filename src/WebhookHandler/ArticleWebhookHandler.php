@@ -79,6 +79,7 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
     $existing_entity->set('field_page_summary', $entity_data->field_page_summary ?? NULL);
+    $existing_entity->set('field_portrait_image_path', $entity_data->field_portrait_image_path ?? NULL);
     $existing_entity->set('field_portrait_image_alt', $entity_data->field_portrait_image_alt ?? NULL);
     $existing_entity->set('field_landscape_image_path', $entity_data->field_landscape_image_path ?? NULL);
     $existing_entity->set('field_landscape_image_alt', $entity_data->field_landscape_image_alt ?? NULL);
