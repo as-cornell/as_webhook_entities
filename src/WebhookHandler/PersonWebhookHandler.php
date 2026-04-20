@@ -2,6 +2,8 @@
 
 namespace Drupal\as_webhook_entities\WebhookHandler;
 
+use Drupal\as_webhook_entities\WebhookImageImporter;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\paragraphs\Entity\Paragraph;
 
 /**
@@ -12,6 +14,26 @@ use Drupal\paragraphs\Entity\Paragraph;
  * overview/research data and domain-specific taxonomy lookups.
  */
 class PersonWebhookHandler extends WebhookHandlerBase {
+
+  /**
+   * The webhook image importer service.
+   *
+   * @var \Drupal\as_webhook_entities\WebhookImageImporter
+   */
+  protected WebhookImageImporter $imageImporter;
+
+  /**
+   * Constructs a PersonWebhookHandler object.
+   *
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   The entity type manager.
+   * @param \Drupal\as_webhook_entities\WebhookImageImporter $imageImporter
+   *   The webhook image importer service.
+   */
+  public function __construct(EntityTypeManagerInterface $entityTypeManager, WebhookImageImporter $imageImporter) {
+    parent::__construct($entityTypeManager);
+    $this->imageImporter = $imageImporter;
+  }
 
   /**
    * {@inheritdoc}
@@ -30,6 +52,13 @@ class PersonWebhookHandler extends WebhookHandlerBase {
     $node_values['field_person_last_name'] = $entity_data->field_person_last_name ?? NULL;
     $node_values['field_job_title'] = $entity_data->field_job_title ?? NULL;
     $node_values['field_portrait_image_path'] = $entity_data->field_portrait_image_path ?? NULL;
+    if (!empty($entity_data->field_portrait_image_path)) {
+      $alt = 'Image of ' . ($entity_data->title ?? '');
+      $mid = $this->imageImporter->importImage($entity_data->field_portrait_image_path, $alt);
+      if ($mid) {
+        $node_values['field_image'] = $mid;
+      }
+    }
     $node_values['field_summary'] = $entity_data->field_summary ?? NULL;
     $node_values['field_primary_college'] = $entity_data->field_primary_college ?? NULL;
     $node_values['field_affiliated_colleges'] = $entity_data->field_affiliated_colleges ?? [];
@@ -112,6 +141,13 @@ class PersonWebhookHandler extends WebhookHandlerBase {
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
     $existing_entity->set('field_portrait_image_path', $entity_data->field_portrait_image_path ?? NULL);
+    if (!empty($entity_data->field_portrait_image_path)) {
+      $alt = 'Image of ' . $existing_entity->getTitle();
+      $mid = $this->imageImporter->importImage($entity_data->field_portrait_image_path, $alt);
+      if ($mid) {
+        $existing_entity->set('field_image', $mid);
+      }
+    }
     $existing_entity->set('field_netid', $entity_data->netid ?? NULL);
     $existing_entity->set('field_person_last_name', $entity_data->field_person_last_name ?? NULL);
     $existing_entity->set('field_summary', $entity_data->field_summary ?? NULL);

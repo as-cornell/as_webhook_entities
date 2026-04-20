@@ -1,7 +1,10 @@
 services:
+  as_webhook_entities.image_importer:
+    class: Drupal\as_webhook_entities\WebhookImageImporter
+    arguments: ['@entity_type.manager', '@http_client', '@file.repository', '@logger.channel.default']
   as_webhook_entities.crud_manager:
     class: Drupal\as_webhook_entities\WebhookCrudManager
-    arguments: ['@entity_type.manager', '@logger.channel.default']
+    arguments: ['@entity_type.manager', '@logger.channel.default', '@as_webhook_entities.image_importer']
   as_webhook_entities.uuid_lookup:
     class: Drupal\as_webhook_entities\WebhookUuidLookup
     arguments: ['@entity_type.manager']

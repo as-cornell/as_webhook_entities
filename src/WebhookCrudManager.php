@@ -11,6 +11,7 @@ use Drupal\as_webhook_entities\WebhookHandler\WebhookHandlerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\as_webhook_entities\WebhookImageImporter;
 
 /**
  * Thin dispatcher for webhook-driven entity CRUD operations.
@@ -51,13 +52,15 @@ class WebhookCrudManager {
    *   The entity type manager.
    * @param \Psr\Log\LoggerInterface $logger
    *   A logger instance.
+   * @param \Drupal\as_webhook_entities\WebhookImageImporter $imageImporter
+   *   The webhook image importer service.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, LoggerInterface $logger) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, LoggerInterface $logger, WebhookImageImporter $imageImporter) {
     $this->entityTypeManager = $entity_type_manager;
     $this->logger = $logger;
     $this->handlers = [
-      'person'              => new PersonWebhookHandler($entity_type_manager),
-      'article'             => new ArticleWebhookHandler($entity_type_manager),
+      'person'              => new PersonWebhookHandler($entity_type_manager, $imageImporter),
+      'article'             => new ArticleWebhookHandler($entity_type_manager, $imageImporter),
       'media_report_entry'  => new MediaReportEntryWebhookHandler($entity_type_manager),
       'media_report_person' => new MediaReportPersonWebhookHandler($entity_type_manager),
       'term'                => new TermWebhookHandler($entity_type_manager, $logger),

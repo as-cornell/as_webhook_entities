@@ -2,6 +2,9 @@
 
 namespace Drupal\as_webhook_entities\WebhookHandler;
 
+use Drupal\as_webhook_entities\WebhookImageImporter;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+
 /**
  * Webhook handler for the 'article' entity type.
  *
@@ -10,6 +13,26 @@ namespace Drupal\as_webhook_entities\WebhookHandler;
  * lookups via remote UUID.
  */
 class ArticleWebhookHandler extends WebhookHandlerBase {
+
+  /**
+   * The webhook image importer service.
+   *
+   * @var \Drupal\as_webhook_entities\WebhookImageImporter
+   */
+  protected WebhookImageImporter $imageImporter;
+
+  /**
+   * Constructs an ArticleWebhookHandler object.
+   *
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   The entity type manager.
+   * @param \Drupal\as_webhook_entities\WebhookImageImporter $imageImporter
+   *   The webhook image importer service.
+   */
+  public function __construct(EntityTypeManagerInterface $entityTypeManager, WebhookImageImporter $imageImporter) {
+    parent::__construct($entityTypeManager);
+    $this->imageImporter = $imageImporter;
+  }
 
   /**
    * {@inheritdoc}
@@ -35,6 +58,21 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     $node_values['field_thumbnail_image_path'] = $entity_data->field_thumbnail_image_path ?? NULL;
     $node_values['field_thumbnail_image_alt'] = $entity_data->field_thumbnail_image_alt ?? NULL;
 
+    // Import remote images as managed media entities.
+    $image_map = [
+      'field_portrait_image_path'  => ['field_image', 'field_portrait_image_alt'],
+      'field_landscape_image_path' => ['field_landscape_image', 'field_landscape_image_alt'],
+      'field_thumbnail_image_path' => ['field_thumbnail_image', 'field_thumbnail_image_alt'],
+    ];
+    foreach ($image_map as $path_field => [$media_field, $alt_field]) {
+      if (!empty($entity_data->$path_field)) {
+        $mid = $this->imageImporter->importImage($entity_data->$path_field, $entity_data->$alt_field ?? '');
+        if ($mid) {
+          $node_values[$media_field] = $mid;
+        }
+      }
+    }
+
     if (!empty($entity_data->field_body)) {
       $node_values['field_body'] = ['value' => $entity_data->field_body->value, 'format' => $entity_data->field_body->format];
     }
@@ -47,6 +85,12 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     if (isset($field_definitions['field_pano_image_path'])) {
       $node_values['field_pano_image_path'] = $entity_data->field_pano_image_path ?? NULL;
       $node_values['field_pano_image_alt'] = $entity_data->field_pano_image_alt ?? NULL;
+      if (!empty($entity_data->field_pano_image_path) && isset($field_definitions['field_pano_image'])) {
+        $mid = $this->imageImporter->importImage($entity_data->field_pano_image_path, $entity_data->field_pano_image_alt ?? '');
+        if ($mid) {
+          $node_values['field_pano_image'] = $mid;
+        }
+      }
     }
     if (isset($field_definitions['field_related_disciplines'])) {
       $tids = $this->lookupTermTidsByName((array) ($entity_data->field_related_disciplines ?? []));
@@ -85,6 +129,22 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     $existing_entity->set('field_landscape_image_alt', $entity_data->field_landscape_image_alt ?? NULL);
     $existing_entity->set('field_thumbnail_image_path', $entity_data->field_thumbnail_image_path ?? NULL);
     $existing_entity->set('field_thumbnail_image_alt', $entity_data->field_thumbnail_image_alt ?? NULL);
+
+    // Import remote images as managed media entities.
+    $image_map = [
+      'field_portrait_image_path'  => ['field_image', 'field_portrait_image_alt'],
+      'field_landscape_image_path' => ['field_landscape_image', 'field_landscape_image_alt'],
+      'field_thumbnail_image_path' => ['field_thumbnail_image', 'field_thumbnail_image_alt'],
+    ];
+    foreach ($image_map as $path_field => [$media_field, $alt_field]) {
+      if (!empty($entity_data->$path_field)) {
+        $mid = $this->imageImporter->importImage($entity_data->$path_field, $entity_data->$alt_field ?? '');
+        if ($mid) {
+          $existing_entity->set($media_field, $mid);
+        }
+      }
+    }
+
     $existing_entity->set('field_body', ['value' => $entity_data->field_body?->value ?? NULL, 'format' => $entity_data->field_body?->format ?? NULL]);
     $existing_entity->set('field_bylines', $entity_data->field_bylines ?? NULL);
     $existing_entity->set('field_dateline', $entity_data->field_dateline ?? NULL);
@@ -96,6 +156,12 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     if ($existing_entity->hasField('field_pano_image_path')) {
       $existing_entity->set('field_pano_image_path', $entity_data->field_pano_image_path ?? NULL);
       $existing_entity->set('field_pano_image_alt', $entity_data->field_pano_image_alt ?? NULL);
+      if (!empty($entity_data->field_pano_image_path) && $existing_entity->hasField('field_pano_image')) {
+        $mid = $this->imageImporter->importImage($entity_data->field_pano_image_path, $entity_data->field_pano_image_alt ?? '');
+        if ($mid) {
+          $existing_entity->set('field_pano_image', $mid);
+        }
+      }
     }
     if ($existing_entity->hasField('field_related_disciplines')) {
       $tids = $this->lookupTermTidsByName((array) ($entity_data->field_related_disciplines ?? []));
