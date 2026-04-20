@@ -150,8 +150,8 @@ class WebhookCrudManager {
       $updated = TRUE;
     }
 
-    if ($entity_data->type !== 'term') {
-      $existing_entity->field_portrait_image_path->value = $entity_data->field_portrait_image_path ?? NULL;
+    if ($entity_data->type !== 'term' && $existing_entity->hasField('field_portrait_image_path')) {
+      $existing_entity->set('field_portrait_image_path', $entity_data->field_portrait_image_path ?? NULL);
     }
 
     $this->getHandler($entity_data->type)?->applyUpdateFields($existing_entity, $entity_data, $domain_schema);

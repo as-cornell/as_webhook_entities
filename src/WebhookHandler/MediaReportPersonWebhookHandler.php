@@ -46,10 +46,10 @@ class MediaReportPersonWebhookHandler extends WebhookHandlerBase {
    * {@inheritdoc}
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
-    $existing_entity->field_person_last_name->value = $entity_data->field_person_last_name ?? NULL;
-    $existing_entity->field_netid->value = $entity_data->netid ?? NULL;
-    $existing_entity->field_people_uuid->value = $entity_data->uuid ?? NULL;
-    $existing_entity->field_remote_uuid->value = $entity_data->uuid ?? NULL;
+    $existing_entity->set('field_person_last_name', $entity_data->field_person_last_name ?? NULL);
+    $existing_entity->set('field_netid', $entity_data->netid ?? NULL);
+    $existing_entity->set('field_people_uuid', $entity_data->uuid ?? NULL);
+    $existing_entity->set('field_remote_uuid', $entity_data->uuid ?? NULL);
 
     // field_person_type taxonomy lookup.
     if (!empty($entity_data->field_person_type)) {

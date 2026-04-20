@@ -112,7 +112,7 @@ class TermWebhookHandler extends WebhookHandlerBase {
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
     $existing_entity->name = $entity_data->title;
     $existing_entity->set('vid', $entity_data->vocabulary);
-    $existing_entity->field_people_tid->value = $entity_data->field_people_tid ?? NULL;
+    $existing_entity->set('field_people_tid', $entity_data->field_people_tid ?? NULL);
 
     // Parent lookup by field_people_tid.
     if (!empty($entity_data->parent)) {

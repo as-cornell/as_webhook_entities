@@ -111,20 +111,17 @@ class PersonWebhookHandler extends WebhookHandlerBase {
    * {@inheritdoc}
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
-    $existing_entity->field_netid->value = $entity_data->netid ?? NULL;
-    $existing_entity->field_person_last_name->value = $entity_data->field_person_last_name ?? NULL;
-    $existing_entity->field_summary->value = $entity_data->field_summary ?? NULL;
-    $existing_entity->field_education->value = $entity_data->field_education?->value ?? NULL;
-    $existing_entity->field_education->format = $entity_data->field_education?->format ?? NULL;
-    $existing_entity->field_keywords->value = $entity_data->field_keywords?->value ?? NULL;
-    $existing_entity->field_keywords->format = $entity_data->field_keywords?->format ?? NULL;
-    $existing_entity->field_body->value = $entity_data->field_body?->value ?? NULL;
-    $existing_entity->field_body->format = $entity_data->field_body?->format ?? NULL;
+    $existing_entity->set('field_netid', $entity_data->netid ?? NULL);
+    $existing_entity->set('field_person_last_name', $entity_data->field_person_last_name ?? NULL);
+    $existing_entity->set('field_summary', $entity_data->field_summary ?? NULL);
+    $existing_entity->set('field_education', ['value' => $entity_data->field_education?->value ?? NULL, 'format' => $entity_data->field_education?->format ?? NULL]);
+    $existing_entity->set('field_keywords', ['value' => $entity_data->field_keywords?->value ?? NULL, 'format' => $entity_data->field_keywords?->format ?? NULL]);
+    $existing_entity->set('field_body', ['value' => $entity_data->field_body?->value ?? NULL, 'format' => $entity_data->field_body?->format ?? NULL]);
     $existing_entity->set('field_primary_college', $entity_data->field_primary_college ?? NULL);
     $existing_entity->set('field_affiliated_colleges', $entity_data->field_affiliated_colleges ?? []);
     $existing_entity->set('field_job_title', $entity_data->field_job_title ?: NULL);
-    $existing_entity->field_exclude_directory->value = (bool) ($entity_data->field_exclude_directory ?? FALSE);
-    $existing_entity->field_hide_contact_info->value = (bool) ($entity_data->field_hide_contact_info ?? FALSE);
+    $existing_entity->set('field_exclude_directory', (bool) ($entity_data->field_exclude_directory ?? FALSE));
+    $existing_entity->set('field_hide_contact_info', (bool) ($entity_data->field_hide_contact_info ?? FALSE));
 
     // field_primary_department lookup.
     if (!empty($entity_data->field_primary_department)) {

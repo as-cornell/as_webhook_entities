@@ -61,12 +61,10 @@ class MediaReportEntryWebhookHandler extends WebhookHandlerBase {
    * {@inheritdoc}
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
-    $existing_entity->field_outlet_name->value = $entity_data->field_outlet_name ?? NULL;
-    $existing_entity->field_news_date->value = $entity_data->field_news_date ?? NULL;
-    $existing_entity->field_media_report_public_cat->value = $entity_data->field_media_report_public_cat ?? NULL;
-    $existing_entity->summary->value = $entity_data->summary ?? NULL;
-    $existing_entity->body->value = $entity_data->body ?? NULL;
-    $existing_entity->body->format = 'plain_text';
+    $existing_entity->set('field_outlet_name', $entity_data->field_outlet_name ?? NULL);
+    $existing_entity->set('field_news_date', $entity_data->field_news_date ?? NULL);
+    $existing_entity->set('field_media_report_public_cat', $entity_data->field_media_report_public_cat ?? NULL);
+    $existing_entity->set('body', ['summary' => $entity_data->summary ?? NULL, 'value' => $entity_data->body ?? NULL, 'format' => 'plain_text']);
     $existing_entity->set('field_news_link', !empty($entity_data->field_news_link)
       ? array_map(fn($uri) => ['uri' => $uri, 'title' => 'Article'], explode(',', $entity_data->field_news_link))
       : NULL);

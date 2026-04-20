@@ -78,31 +78,30 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
    * {@inheritdoc}
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
-    $existing_entity->field_page_summary->value = $entity_data->field_page_summary ?? NULL;
-    $existing_entity->field_portrait_image_alt->value = $entity_data->field_portrait_image_alt ?? NULL;
-    $existing_entity->field_landscape_image_path->value = $entity_data->field_landscape_image_path ?? NULL;
-    $existing_entity->field_landscape_image_alt->value = $entity_data->field_landscape_image_alt ?? NULL;
-    $existing_entity->field_thumbnail_image_path->value = $entity_data->field_thumbnail_image_path ?? NULL;
-    $existing_entity->field_thumbnail_image_alt->value = $entity_data->field_thumbnail_image_alt ?? NULL;
-    $existing_entity->field_body->value = $entity_data->field_body?->value ?? NULL;
-    $existing_entity->field_body->format = $entity_data->field_body?->format ?? NULL;
-    $existing_entity->field_bylines->value = $entity_data->field_bylines ?? NULL;
-    $existing_entity->field_dateline->value = $entity_data->field_dateline ?? NULL;
-    $existing_entity->field_media_sources->value = $entity_data->field_media_sources ?? NULL;
-    $existing_entity->field_external_media_source->value = $entity_data->field_external_media_source ?? NULL;
+    $existing_entity->set('field_page_summary', $entity_data->field_page_summary ?? NULL);
+    $existing_entity->set('field_portrait_image_alt', $entity_data->field_portrait_image_alt ?? NULL);
+    $existing_entity->set('field_landscape_image_path', $entity_data->field_landscape_image_path ?? NULL);
+    $existing_entity->set('field_landscape_image_alt', $entity_data->field_landscape_image_alt ?? NULL);
+    $existing_entity->set('field_thumbnail_image_path', $entity_data->field_thumbnail_image_path ?? NULL);
+    $existing_entity->set('field_thumbnail_image_alt', $entity_data->field_thumbnail_image_alt ?? NULL);
+    $existing_entity->set('field_body', ['value' => $entity_data->field_body?->value ?? NULL, 'format' => $entity_data->field_body?->format ?? NULL]);
+    $existing_entity->set('field_bylines', $entity_data->field_bylines ?? NULL);
+    $existing_entity->set('field_dateline', $entity_data->field_dateline ?? NULL);
+    $existing_entity->set('field_media_sources', $entity_data->field_media_sources ?? NULL);
+    $existing_entity->set('field_external_media_source', $entity_data->field_external_media_source ?? NULL);
     if ($existing_entity->hasField('field_card_label')) {
-      $existing_entity->field_card_label->value = $entity_data->field_card_label ?? NULL;
+      $existing_entity->set('field_card_label', $entity_data->field_card_label ?? NULL);
     }
     if ($existing_entity->hasField('field_pano_image_path')) {
-      $existing_entity->field_pano_image_path->value = $entity_data->field_pano_image_path ?? NULL;
-      $existing_entity->field_pano_image_alt->value = $entity_data->field_pano_image_alt ?? NULL;
+      $existing_entity->set('field_pano_image_path', $entity_data->field_pano_image_path ?? NULL);
+      $existing_entity->set('field_pano_image_alt', $entity_data->field_pano_image_alt ?? NULL);
     }
     if ($existing_entity->hasField('field_related_disciplines')) {
       $tids = $this->lookupTermTidsByName((array) ($entity_data->field_related_disciplines ?? []));
       $existing_entity->set('field_related_disciplines', !empty($tids) ? $tids : []);
     }
     if ($existing_entity->hasField('field_summary')) {
-      $existing_entity->field_summary->value = $entity_data->field_summary ?? NULL;
+      $existing_entity->set('field_summary', $entity_data->field_summary ?? NULL);
     }
     // Related people.
     $peoplearray = !empty($entity_data->field_related_people)
