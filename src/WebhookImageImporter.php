@@ -3,7 +3,6 @@
 namespace Drupal\as_webhook_entities;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\File\FileRepositoryInterface;
 use Drupal\Core\File\FileSystemInterface;
 use GuzzleHttp\ClientInterface;
 use Psr\Log\LoggerInterface;
@@ -24,16 +23,19 @@ class WebhookImageImporter {
    *   The entity type manager.
    * @param \GuzzleHttp\ClientInterface $httpClient
    *   The HTTP client.
-   * @param \Drupal\Core\File\FileRepositoryInterface $fileRepository
-   *   The file repository service.
+   * @param object $fileRepository
+   *   The file repository service (Drupal\file\FileRepository).
    * @param \Psr\Log\LoggerInterface $logger
    *   A logger instance.
+   * @param \Drupal\Core\File\FileSystemInterface $fileSystem
+   *   The file system service.
    */
   public function __construct(
     protected EntityTypeManagerInterface $entityTypeManager,
     protected ClientInterface $httpClient,
-    protected FileRepositoryInterface $fileRepository,
+    protected object $fileRepository,
     protected LoggerInterface $logger,
+    protected FileSystemInterface $fileSystem,
   ) {}
 
   /**
@@ -74,6 +76,8 @@ class WebhookImageImporter {
     }
     else {
       try {
+        $dir = dirname($destination);
+        $this->fileSystem->prepareDirectory($dir, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
         $response = $this->httpClient->get($url);
         $file = $this->fileRepository->writeData(
           $response->getBody()->getContents(),
