@@ -76,18 +76,20 @@ class PersonWebhookHandler extends WebhookHandlerBase {
     }
 
     // field_person_type taxonomy lookup.
-    $tids = $this->lookupTermTidsByName([$entity_data->field_person_type ?? '']);
+    $tids = $this->lookupTermTidsByNameInVocab([$entity_data->field_person_type ?? ''], 'person_type');
     if (!empty($tids)) {
       $node_values['field_person_type'] = $tids;
     }
 
     // field_primary_department taxonomy lookup.
     if (!empty($entity_data->field_primary_department)) {
-      $tids = $this->lookupTermTidsByName([$entity_data->field_primary_department]);
+      $tids = $this->lookupTermTidsByNameInVocab([$entity_data->field_primary_department], 'departments_programs');
       if (!empty($tids)) {
         $node_values['field_primary_department'] = $tids;
       }
     }
+
+    $node_values['field_as_directory'] = (bool) ($entity_data->field_as_directory ?? FALSE);
 
     // field_link from links array.
     if (!empty($entity_data->field_links)) {
@@ -122,7 +124,7 @@ class PersonWebhookHandler extends WebhookHandlerBase {
     if (!empty($entity_data->field_overview_research)) {
       $paragraphs = [];
       foreach ($entity_data->field_overview_research as $orr) {
-        $ordeptarray = $this->lookupTermTidsByName((array) ($orr->departments_programs ?? []));
+        $ordeptarray = $this->lookupTermTidsByNameInVocab((array) ($orr->departments_programs ?? []), 'departments_programs');
         $paragraph = Paragraph::create([
           'type' => 'overview_research',
           'field_departments_programs' => $ordeptarray,
@@ -162,7 +164,7 @@ class PersonWebhookHandler extends WebhookHandlerBase {
 
     // field_primary_department lookup.
     if (!empty($entity_data->field_primary_department)) {
-      $tids = $this->lookupTermTidsByName([$entity_data->field_primary_department]);
+      $tids = $this->lookupTermTidsByNameInVocab([$entity_data->field_primary_department], 'departments_programs');
       if (!empty($tids)) {
         $existing_entity->set('field_primary_department', $tids);
       }
@@ -170,11 +172,13 @@ class PersonWebhookHandler extends WebhookHandlerBase {
 
     // field_person_type taxonomy lookup.
     if (!empty($entity_data->field_person_type)) {
-      $tids = $this->lookupTermTidsByName([$entity_data->field_person_type]);
+      $tids = $this->lookupTermTidsByNameInVocab([$entity_data->field_person_type], 'person_type');
       if (!empty($tids)) {
         $existing_entity->set('field_person_type', $tids);
       }
     }
+
+    $existing_entity->set('field_as_directory', (bool) ($entity_data->field_as_directory ?? FALSE));
 
     // Domain: 'departments' only — academic_role.
     if (($domain_schema['schema'] ?? '') === 'departments') {
@@ -202,7 +206,7 @@ class PersonWebhookHandler extends WebhookHandlerBase {
       }
       if (!empty($entity_data->field_overview_research)) {
         foreach ($entity_data->field_overview_research as $orr) {
-          $ordeptarray = $this->lookupTermTidsByName((array) ($orr->departments_programs ?? []));
+          $ordeptarray = $this->lookupTermTidsByNameInVocab((array) ($orr->departments_programs ?? []), 'departments_programs');
           $paragraph = Paragraph::create([
             'type' => 'overview_research',
             'field_departments_programs' => $ordeptarray,
