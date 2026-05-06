@@ -98,6 +98,33 @@ abstract class WebhookHandlerBase implements WebhookHandlerInterface {
   }
 
   /**
+   * Looks up a taxonomy term by name in a given vocabulary, creating it if
+   * it does not already exist. Returns the term ID.
+   *
+   * @param string $name
+   *   The term name to find or create.
+   * @param string $vid
+   *   The vocabulary machine name.
+   *
+   * @return int
+   *   The term ID.
+   */
+  protected function lookupOrCreateTermByName(string $name, string $vid): int {
+    $name = trim($name);
+    $results = $this->entityTypeManager->getStorage('taxonomy_term')
+      ->loadByProperties(['name' => $name, 'vid' => $vid]);
+    if (!empty($results)) {
+      return (int) reset($results)->id();
+    }
+    $term = $this->entityTypeManager->getStorage('taxonomy_term')->create([
+      'name' => $name,
+      'vid'  => $vid,
+    ]);
+    $term->save();
+    return (int) $term->id();
+  }
+
+  /**
    * Looks up node nids by field_remote_uuid values.
    *
    * @param array $uuids

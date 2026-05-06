@@ -49,20 +49,27 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     $node_values['field_remote_uuid'] = $entity_data->uuid;
     $node_values['field_bylines'] = $entity_data->field_bylines ?? NULL;
     $node_values['field_dateline'] = $entity_data->field_dateline ?? NULL;
-    $node_values['field_media_sources'] = $entity_data->field_media_sources ?? NULL;
     $node_values['field_external_media_source'] = $entity_data->field_external_media_source ?? NULL;
+    if (!empty($entity_data->field_media_sources)) {
+      $node_values['field_media_source_reference'] = $this->lookupOrCreateTermByName($entity_data->field_media_sources, 'article_mediasources');
+    }
+    $node_values['field_card_label'] = $entity_data->field_card_label ?? NULL;
+    $node_values['field_summary'] = $entity_data->field_summary ?? NULL;
     $node_values['field_portrait_image_path'] = $entity_data->field_portrait_image_path ?? NULL;
     $node_values['field_portrait_image_alt'] = $entity_data->field_portrait_image_alt ?? NULL;
     $node_values['field_landscape_image_path'] = $entity_data->field_landscape_image_path ?? NULL;
     $node_values['field_landscape_image_alt'] = $entity_data->field_landscape_image_alt ?? NULL;
     $node_values['field_thumbnail_image_path'] = $entity_data->field_thumbnail_image_path ?? NULL;
     $node_values['field_thumbnail_image_alt'] = $entity_data->field_thumbnail_image_alt ?? NULL;
+    $node_values['field_pano_image_path'] = $entity_data->field_pano_image_path ?? NULL;
+    $node_values['field_pano_image_alt'] = $entity_data->field_pano_image_alt ?? NULL;
 
     // Import remote images as managed media entities.
     $image_map = [
       'field_portrait_image_path'  => ['field_image', 'field_portrait_image_alt'],
       'field_landscape_image_path' => ['field_landscape_image', 'field_landscape_image_alt'],
       'field_thumbnail_image_path' => ['field_thumbnail_image', 'field_thumbnail_image_alt'],
+      'field_pano_image_path'      => ['field_pano_image', 'field_pano_image_alt'],
     ];
     foreach ($image_map as $path_field => [$media_field, $alt_field]) {
       if (!empty($entity_data->$path_field)) {
@@ -77,32 +84,10 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
       $node_values['field_body'] = ['value' => $entity_data->field_body->value, 'format' => $entity_data->field_body->format];
     }
 
-    // Only set these fields if they exist on the destination bundle.
-    $field_definitions = \Drupal::service('entity_field.manager')->getFieldDefinitions('node', 'article');
-    if (isset($field_definitions['field_card_label'])) {
-      $node_values['field_card_label'] = $entity_data->field_card_label ?? NULL;
-    }
-    if (isset($field_definitions['field_pano_image_path'])) {
-      $node_values['field_pano_image_path'] = $entity_data->field_pano_image_path ?? NULL;
-      $node_values['field_pano_image_alt'] = $entity_data->field_pano_image_alt ?? NULL;
-      if (!empty($entity_data->field_pano_image_path) && isset($field_definitions['field_pano_image'])) {
-        $mid = $this->imageImporter->importImage($entity_data->field_pano_image_path, $entity_data->field_pano_image_alt ?? '');
-        if ($mid) {
-          $node_values['field_pano_image'] = $mid;
-        }
-      }
-    }
-    if (isset($field_definitions['field_related_disciplines'])) {
-      $tids = $this->lookupTermTidsByName((array) ($entity_data->field_related_disciplines ?? []));
-      if (!empty($tids)) {
-        $node_values['field_related_disciplines'] = $tids;
-      }
-    }
-    if (isset($field_definitions['field_page_summary'])) {
-      $node_values['field_page_summary'] = $entity_data->field_page_summary ?? NULL;
-    }
-    if (isset($field_definitions['field_summary'])) {
-      $node_values['field_summary'] = $entity_data->field_summary ?? NULL;
+    // Related disciplines lookup by term name.
+    $tids = $this->lookupTermTidsByName((array) ($entity_data->field_related_disciplines ?? []));
+    if (!empty($tids)) {
+      $node_values['field_related_disciplines'] = $tids;
     }
 
     // Related people lookup by remote UUID.
@@ -122,19 +107,21 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
    * {@inheritdoc}
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
-    $existing_entity->set('field_page_summary', $entity_data->field_page_summary ?? NULL);
     $existing_entity->set('field_portrait_image_path', $entity_data->field_portrait_image_path ?? NULL);
     $existing_entity->set('field_portrait_image_alt', $entity_data->field_portrait_image_alt ?? NULL);
     $existing_entity->set('field_landscape_image_path', $entity_data->field_landscape_image_path ?? NULL);
     $existing_entity->set('field_landscape_image_alt', $entity_data->field_landscape_image_alt ?? NULL);
     $existing_entity->set('field_thumbnail_image_path', $entity_data->field_thumbnail_image_path ?? NULL);
     $existing_entity->set('field_thumbnail_image_alt', $entity_data->field_thumbnail_image_alt ?? NULL);
+    $existing_entity->set('field_pano_image_path', $entity_data->field_pano_image_path ?? NULL);
+    $existing_entity->set('field_pano_image_alt', $entity_data->field_pano_image_alt ?? NULL);
 
     // Import remote images as managed media entities.
     $image_map = [
       'field_portrait_image_path'  => ['field_image', 'field_portrait_image_alt'],
       'field_landscape_image_path' => ['field_landscape_image', 'field_landscape_image_alt'],
       'field_thumbnail_image_path' => ['field_thumbnail_image', 'field_thumbnail_image_alt'],
+      'field_pano_image_path'      => ['field_pano_image', 'field_pano_image_alt'],
     ];
     foreach ($image_map as $path_field => [$media_field, $alt_field]) {
       if (!empty($entity_data->$path_field)) {
@@ -148,28 +135,20 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     $existing_entity->set('field_body', ['value' => $entity_data->field_body?->value ?? NULL, 'format' => $entity_data->field_body?->format ?? NULL]);
     $existing_entity->set('field_bylines', $entity_data->field_bylines ?? NULL);
     $existing_entity->set('field_dateline', $entity_data->field_dateline ?? NULL);
-    $existing_entity->set('field_media_sources', $entity_data->field_media_sources ?? NULL);
     $existing_entity->set('field_external_media_source', $entity_data->field_external_media_source ?? NULL);
-    if ($existing_entity->hasField('field_card_label')) {
-      $existing_entity->set('field_card_label', $entity_data->field_card_label ?? NULL);
+    if (!empty($entity_data->field_media_sources)) {
+      $existing_entity->set('field_media_source_reference', $this->lookupOrCreateTermByName($entity_data->field_media_sources, 'article_mediasources'));
     }
-    if ($existing_entity->hasField('field_pano_image_path')) {
-      $existing_entity->set('field_pano_image_path', $entity_data->field_pano_image_path ?? NULL);
-      $existing_entity->set('field_pano_image_alt', $entity_data->field_pano_image_alt ?? NULL);
-      if (!empty($entity_data->field_pano_image_path) && $existing_entity->hasField('field_pano_image')) {
-        $mid = $this->imageImporter->importImage($entity_data->field_pano_image_path, $entity_data->field_pano_image_alt ?? '');
-        if ($mid) {
-          $existing_entity->set('field_pano_image', $mid);
-        }
-      }
+    else {
+      $existing_entity->set('field_media_source_reference', NULL);
     }
-    if ($existing_entity->hasField('field_related_disciplines')) {
-      $tids = $this->lookupTermTidsByName((array) ($entity_data->field_related_disciplines ?? []));
-      $existing_entity->set('field_related_disciplines', !empty($tids) ? $tids : []);
-    }
-    if ($existing_entity->hasField('field_summary')) {
-      $existing_entity->set('field_summary', $entity_data->field_summary ?? NULL);
-    }
+    $existing_entity->set('field_card_label', $entity_data->field_card_label ?? NULL);
+    $existing_entity->set('field_summary', $entity_data->field_summary ?? NULL);
+
+    // Related disciplines lookup by term name.
+    $tids = $this->lookupTermTidsByName((array) ($entity_data->field_related_disciplines ?? []));
+    $existing_entity->set('field_related_disciplines', !empty($tids) ? $tids : []);
+
     // Related people.
     $peoplearray = !empty($entity_data->field_related_people)
       ? $this->lookupNodeNidsByRemoteUuid((array) $entity_data->field_related_people)
