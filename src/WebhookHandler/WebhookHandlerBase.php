@@ -70,6 +70,35 @@ abstract class WebhookHandlerBase implements WebhookHandlerInterface {
   }
 
   /**
+   * Looks up taxonomy term tids by name within a specific vocabulary.
+   *
+   * @param array $names
+   *   An array of taxonomy term name strings.
+   * @param string $vid
+   *   The vocabulary machine name to restrict the lookup to.
+   *
+   * @return array
+   *   An array of term IDs (tids) for matching terms.
+   */
+  protected function lookupTermTidsByNameInVocab(array $names, string $vid): array {
+    if (empty($names)) {
+      return [];
+    }
+    $tids = [];
+    foreach ($names as $name) {
+      if (empty($name)) {
+        continue;
+      }
+      $results = $this->entityTypeManager->getStorage('taxonomy_term')
+        ->loadByProperties(['name' => $name, 'vid' => $vid]);
+      foreach ($results as $term) {
+        $tids[] = $term->id();
+      }
+    }
+    return $tids;
+  }
+
+  /**
    * Looks up taxonomy term tids by a field property and array of values.
    *
    * @param string $field

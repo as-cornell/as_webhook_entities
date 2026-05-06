@@ -84,10 +84,16 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
       $node_values['field_body'] = ['value' => $entity_data->field_body->value, 'format' => $entity_data->field_body->format];
     }
 
-    // Related disciplines lookup by term name.
-    $tids = $this->lookupTermTidsByName((array) ($entity_data->field_related_disciplines ?? []));
+    // Related disciplines lookup by term name within the discipline vocabulary.
+    $tids = $this->lookupTermTidsByNameInVocab((array) ($entity_data->field_related_disciplines ?? []), 'discipline');
     if (!empty($tids)) {
       $node_values['field_related_disciplines'] = $tids;
+    }
+
+    // Tags lookup by term name within the tags vocabulary.
+    $tids = $this->lookupTermTidsByNameInVocab((array) ($entity_data->field_tags ?? []), 'tags');
+    if (!empty($tids)) {
+      $node_values['field_tags'] = $tids;
     }
 
     // Related people lookup by remote UUID.
@@ -145,9 +151,13 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     $existing_entity->set('field_card_label', $entity_data->field_card_label ?? NULL);
     $existing_entity->set('field_summary', $entity_data->field_summary ?? NULL);
 
-    // Related disciplines lookup by term name.
-    $tids = $this->lookupTermTidsByName((array) ($entity_data->field_related_disciplines ?? []));
+    // Related disciplines lookup by term name within the discipline vocabulary.
+    $tids = $this->lookupTermTidsByNameInVocab((array) ($entity_data->field_related_disciplines ?? []), 'discipline');
     $existing_entity->set('field_related_disciplines', !empty($tids) ? $tids : []);
+
+    // Tags lookup by term name within the tags vocabulary.
+    $tids = $this->lookupTermTidsByNameInVocab((array) ($entity_data->field_tags ?? []), 'tags');
+    $existing_entity->set('field_tags', !empty($tids) ? $tids : []);
 
     // Related people.
     $peoplearray = !empty($entity_data->field_related_people)
