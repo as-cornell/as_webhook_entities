@@ -197,7 +197,7 @@ class WebhookCrudManager {
     $dparray = [];
     $daarray = [];
     foreach ((array) ($entity_data->field_departments_programs ?? []) as $dpname) {
-      $results = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dpname]);
+      $results = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dpname, 'vid' => 'departments_programs']);
       if ($dp = reset($results)) {
         $dparray[] = $dp->get('tid')->value;
         if ($is_departments) {
@@ -235,7 +235,7 @@ class WebhookCrudManager {
     $dparray = [];
     $daarray = [];
     foreach ((array) ($entity_data->field_departments_programs ?? []) as $dpname) {
-      $results = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dpname]);
+      $results = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['name' => $dpname, 'vid' => 'departments_programs']);
       if ($dp = reset($results)) {
         $dparray[] = $dp->get('tid')->value;
         if ($is_departments) {
