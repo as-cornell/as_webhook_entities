@@ -46,11 +46,14 @@ class WebhookImageImporter {
    *   The full URL of the remote image.
    * @param string $alt
    *   Alt text to store on the media entity's image field.
+   * @param array $domains
+   *   Optional list of domain_access target IDs to apply to the media entity.
+   *   Any domains not already present are appended; existing tags are preserved.
    *
    * @return int|null
    *   The media entity ID, or NULL on failure.
    */
-  public function importImage(string $url, string $alt): ?int {
+  public function importImage(string $url, string $alt, array $domains = []): ?int {
     // Strip query strings and HTML entities, then always resolve to the
     // original file rather than a styled derivative.
     $url = html_entity_decode(strtok($url, '?'));
@@ -110,7 +113,8 @@ class WebhookImageImporter {
       }
     }
 
-    // Reuse an existing media entity that already references this file.
+    // Reuse an existing media entity that already references this file,
+    // or create a new one.
     $media_storage = $this->entityTypeManager->getStorage('media');
     $existing = $media_storage->getQuery()
       ->condition('bundle', 'image')
@@ -119,20 +123,33 @@ class WebhookImageImporter {
       ->execute();
 
     if (!empty($existing)) {
-      return (int) reset($existing);
+      $media = $media_storage->load((int) reset($existing));
+    }
+    else {
+      $media = $media_storage->create([
+        'bundle' => 'image',
+        'name' => $filename,
+        'field_media_image' => [
+          'target_id' => $file->id(),
+          'alt' => $alt,
+        ],
+      ]);
+      $media->save();
     }
 
-    $media = $media_storage->create([
-      'bundle' => 'image',
-      'name' => $filename,
-      'field_media_image' => [
-        'target_id' => $file->id(),
-        'alt' => $alt,
-      ],
-    ]);
-    $media->save();
+    // Apply any domain_access values not already present on the media entity.
+    if (!empty($domains) && $media) {
+      $existing_domains = array_column($media->get('domain_access')->getValue(), 'target_id');
+      $to_add = array_diff($domains, $existing_domains);
+      if (!empty($to_add)) {
+        foreach ($to_add as $domain) {
+          $media->get('domain_access')->appendItem(['target_id' => $domain]);
+        }
+        $media->save();
+      }
+    }
 
-    return (int) $media->id();
+    return $media ? (int) $media->id() : NULL;
   }
 
   /**
@@ -192,6 +209,8 @@ class WebhookImageImporter {
       'pano'      => [16, 9],
     ];
 
+    $is_portrait_source = $img_h > $img_w;
+
     foreach ($crop_types as $type_id => [$aw, $ah]) {
       if (Crop::findCrop($uri, $type_id)) {
         continue;
@@ -199,11 +218,22 @@ class WebhookImageImporter {
       $scale  = min($img_w / $aw, $img_h / $ah);
       $crop_w = (int) round($aw * $scale);
       $crop_h = (int) round($ah * $scale);
+
+      // For wide crops on portrait source images, shift the crop center upward
+      // (to ~25% from top) so heads stay in frame. Clamped to crop_h/2 minimum
+      // so the crop rectangle never extends above y=0.
+      if ($is_portrait_source && in_array($type_id, ['landscape', 'pano'])) {
+        $y = max((int) round($crop_h / 2), (int) round($img_h * 0.25));
+      }
+      else {
+        $y = (int) round($img_h / 2);
+      }
+
       Crop::create([
         'type'   => $type_id,
         'uri'    => $uri,
         'x'      => (int) round($img_w / 2),
-        'y'      => (int) round($img_h / 2),
+        'y'      => $y,
         'width'  => $crop_w,
         'height' => $crop_h,
       ])->save();

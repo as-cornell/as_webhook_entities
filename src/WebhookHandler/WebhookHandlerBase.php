@@ -154,6 +154,38 @@ abstract class WebhookHandlerBase implements WebhookHandlerInterface {
   }
 
   /**
+   * Resolves domain_access target IDs from a payload's field_departments_programs.
+   *
+   * Looks up each department name in the departments_programs vocabulary and
+   * reads field_domain_access_target_id from the matched term. Always prepends
+   * 'departments_as_cornell_edu'. Returns an empty array when the payload has
+   * no department data.
+   *
+   * @param object $entity_data
+   *   The decoded webhook payload entity data object.
+   *
+   * @return array
+   *   An array of domain target ID strings.
+   */
+  protected function resolveDomainsFromDepartments(object $entity_data): array {
+    $domains = [];
+    foreach ((array) ($entity_data->field_departments_programs ?? []) as $dpname) {
+      $results = $this->entityTypeManager->getStorage('taxonomy_term')
+        ->loadByProperties(['name' => $dpname, 'vid' => 'departments_programs']);
+      if ($dp = reset($results)) {
+        $domain = $dp->get('field_domain_access_target_id')->value;
+        if ($domain) {
+          $domains[] = $domain;
+        }
+      }
+    }
+    if (!empty($domains)) {
+      array_unshift($domains, 'departments_as_cornell_edu');
+    }
+    return array_unique($domains);
+  }
+
+  /**
    * Looks up node nids by field_remote_uuid values.
    *
    * @param array $uuids

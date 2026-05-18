@@ -64,7 +64,11 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     $node_values['field_pano_image_path'] = $entity_data->field_pano_image_path ?? NULL;
     $node_values['field_pano_image_alt'] = $entity_data->field_pano_image_alt ?? NULL;
 
-    // Import remote images as managed media entities.
+    // Import remote images as managed media entities, tagging each with the
+    // article's domain_access values so they are visible on the correct domain.
+    $domains = ($domain_schema['schema'] ?? '') === 'departments'
+      ? $this->resolveDomainsFromDepartments($entity_data)
+      : [];
     $image_map = [
       'field_portrait_image_path'  => ['field_image', 'field_portrait_image_alt'],
       'field_landscape_image_path' => ['field_landscape_image', 'field_landscape_image_alt'],
@@ -73,7 +77,7 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     ];
     foreach ($image_map as $path_field => [$media_field, $alt_field]) {
       if (!empty($entity_data->$path_field)) {
-        $mid = $this->imageImporter->importImage($entity_data->$path_field, $entity_data->$alt_field ?? '');
+        $mid = $this->imageImporter->importImage($entity_data->$path_field, $entity_data->$alt_field ?? '', $domains);
         if ($mid) {
           $node_values[$media_field] = $mid;
         }
@@ -122,7 +126,11 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     $existing_entity->set('field_pano_image_path', $entity_data->field_pano_image_path ?? NULL);
     $existing_entity->set('field_pano_image_alt', $entity_data->field_pano_image_alt ?? NULL);
 
-    // Import remote images as managed media entities.
+    // Import remote images as managed media entities, tagging each with the
+    // article's domain_access values so they are visible on the correct domain.
+    $domains = ($domain_schema['schema'] ?? '') === 'departments'
+      ? $this->resolveDomainsFromDepartments($entity_data)
+      : [];
     $image_map = [
       'field_portrait_image_path'  => ['field_image', 'field_portrait_image_alt'],
       'field_landscape_image_path' => ['field_landscape_image', 'field_landscape_image_alt'],
@@ -131,7 +139,7 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     ];
     foreach ($image_map as $path_field => [$media_field, $alt_field]) {
       if (!empty($entity_data->$path_field)) {
-        $mid = $this->imageImporter->importImage($entity_data->$path_field, $entity_data->$alt_field ?? '');
+        $mid = $this->imageImporter->importImage($entity_data->$path_field, $entity_data->$alt_field ?? '', $domains);
         if ($mid) {
           $existing_entity->set($media_field, $mid);
         }

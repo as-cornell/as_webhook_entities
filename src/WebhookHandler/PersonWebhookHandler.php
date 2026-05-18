@@ -54,7 +54,10 @@ class PersonWebhookHandler extends WebhookHandlerBase {
     $node_values['field_portrait_image_path'] = $entity_data->field_portrait_image_path ?? NULL;
     if (!empty($entity_data->field_portrait_image_path)) {
       $alt = 'Image of ' . ($entity_data->title ?? '');
-      $mid = $this->imageImporter->importImage($entity_data->field_portrait_image_path, $alt);
+      $domains = ($domain_schema['schema'] ?? '') === 'departments'
+        ? $this->resolveDomainsFromDepartments($entity_data)
+        : [];
+      $mid = $this->imageImporter->importImage($entity_data->field_portrait_image_path, $alt, $domains);
       if ($mid) {
         $node_values['field_image'] = $mid;
       }
@@ -145,7 +148,10 @@ class PersonWebhookHandler extends WebhookHandlerBase {
     $existing_entity->set('field_portrait_image_path', $entity_data->field_portrait_image_path ?? NULL);
     if (!empty($entity_data->field_portrait_image_path)) {
       $alt = 'Image of ' . $existing_entity->getTitle();
-      $mid = $this->imageImporter->importImage($entity_data->field_portrait_image_path, $alt);
+      $domains = ($domain_schema['schema'] ?? '') === 'departments'
+        ? $this->resolveDomainsFromDepartments($entity_data)
+        : [];
+      $mid = $this->imageImporter->importImage($entity_data->field_portrait_image_path, $alt, $domains);
       if ($mid) {
         $existing_entity->set('field_image', $mid);
       }
