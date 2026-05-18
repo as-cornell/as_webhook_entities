@@ -82,6 +82,7 @@ class WebhookImageImporter {
 
     if (!empty($files)) {
       $file = reset($files);
+      $this->applyCrops($file);
     }
     else {
       try {
