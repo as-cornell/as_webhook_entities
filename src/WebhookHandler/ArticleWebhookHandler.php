@@ -85,7 +85,10 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     }
 
     if (!empty($entity_data->field_body)) {
-      $node_values['field_body'] = ['value' => $entity_data->field_body->value, 'format' => $entity_data->field_body->format];
+      $node_values['field_body'] = [
+        'value'  => $this->imageImporter->processBodyHtml($entity_data->field_body->value, $domains),
+        'format' => $entity_data->field_body->format,
+      ];
     }
 
     // Related disciplines lookup by term name within the discipline vocabulary.
@@ -146,7 +149,10 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
       }
     }
 
-    $existing_entity->set('field_body', ['value' => $entity_data->field_body?->value ?? NULL, 'format' => $entity_data->field_body?->format ?? NULL]);
+    $existing_entity->set('field_body', [
+      'value'  => $this->imageImporter->processBodyHtml($entity_data->field_body?->value ?? '', $domains),
+      'format' => $entity_data->field_body?->format ?? NULL,
+    ]);
     $existing_entity->set('field_bylines', $entity_data->field_bylines ?? NULL);
     $existing_entity->set('field_dateline', $entity_data->field_dateline ?? NULL);
     $existing_entity->set('field_external_media_source', $entity_data->field_external_media_source ?? NULL);

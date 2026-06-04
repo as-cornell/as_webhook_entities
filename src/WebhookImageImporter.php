@@ -154,6 +154,96 @@ class WebhookImageImporter {
   }
 
   /**
+   * Converts inline remote images in body HTML to local drupal-media embeds.
+   *
+   * The artsci-as webhook sender uses body->processed, which renders
+   * drupal-media embeds to <figure><img src="https://artsci-as..."> HTML
+   * before transmission. This method:
+   *   1. Finds <figure> blocks that contain absolute-URL <img> tags and
+   *      replaces the entire figure with a <drupal-media> embed.
+   *   2. Finds any remaining standalone absolute-URL <img> tags and replaces
+   *      them with <drupal-media> embeds.
+   *
+   * Using drupal-media embeds (rather than rewriting src attributes) ensures
+   * images are tracked as managed media entities by entity_usage, enabling
+   * safe pruning of unused files later.
+   *
+   * @param string $html
+   *   The rendered body HTML from the webhook payload.
+   * @param array $domains
+   *   Domain_access target IDs to tag any newly created media entities with.
+   *
+   * @return string
+   *   The HTML with remote inline images replaced by local drupal-media embeds.
+   *   Any image whose download fails is left untouched.
+   */
+  public function processBodyHtml(string $html, array $domains = []): string {
+    if (empty($html)) {
+      return $html;
+    }
+
+    // Replace <figure> blocks containing absolute <img> tags. The artsci-as
+    // renderer wraps drupal-media image embeds in <figure> elements; replacing
+    // the whole figure avoids leaving an orphaned wrapper around the new embed.
+    $html = preg_replace_callback(
+      '/<figure\b[^>]*>.*?<\/figure>/is',
+      function (array $m) use ($domains): string {
+        $figure = $m[0];
+        if (!preg_match('/<img\b[^>]*\bsrc=["\']?(https?:\/\/[^"\'>\s]+)/i', $figure, $img_m)) {
+          return $figure;
+        }
+        $src = $img_m[1];
+        preg_match('/\balt=["\']([^"\']*)["\']?/i', $figure, $alt_m);
+
+        $mid = $this->importImage($src, $alt_m[1] ?? '', $domains);
+        if (!$mid) {
+          return $figure;
+        }
+        $media = $this->entityTypeManager->getStorage('media')->load($mid);
+        if (!$media) {
+          return $figure;
+        }
+
+        $align = '';
+        if (preg_match('/\balign-(left|right|center)\b/i', $figure, $align_m)) {
+          $align = ' data-align="' . strtolower($align_m[1]) . '"';
+        }
+
+        return '<drupal-media data-entity-type="media" data-entity-uuid="'
+          . $media->uuid() . '"' . $align
+          . ' data-entity-embed-display="view_mode:media.embedded">'
+          . '</drupal-media>';
+      },
+      $html
+    );
+
+    // Replace any remaining standalone absolute <img> tags (not inside figures).
+    return preg_replace_callback(
+      '/<img\b[^>]*\bsrc=["\']?(https?:\/\/[^"\'>\s]+)["\']?[^>]*>/i',
+      function (array $m) use ($domains): string {
+        $tag = $m[0];
+        $src = $m[1];
+        preg_match('/\balt=["\']([^"\']*)["\']?/i', $tag, $alt_m);
+
+        $mid = $this->importImage($src, $alt_m[1] ?? '', $domains);
+        if (!$mid) {
+          return $tag;
+        }
+        $media = $this->entityTypeManager->getStorage('media')->load($mid);
+        if (!$media) {
+          return $tag;
+        }
+
+        return '<drupal-media data-entity-type="media" data-entity-uuid="'
+          . $media->uuid() . '"'
+          . ' data-entity-embed-display="view_mode:media.embedded">'
+          . '</drupal-media>';
+      },
+      $html
+    );
+  }
+
+  /**
    * Sanitizes a filename to lowercase with hyphens and no special characters.
    *
    * @param string $filename

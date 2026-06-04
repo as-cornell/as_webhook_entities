@@ -2,101 +2,202 @@
 	"info": {
 		"_postman_id": "129f0e97-4488-4a51-a951-07558f6be70e",
 		"name": "Webhook Entities",
+		"description": "Webhook payloads sent by as_webhook_update to as_webhook_entities (artsci-departments).\n\nSources:\n- Articles: artsci-as project (as_webhook_update/ArticleDataExtractor)\n- People: artsci-people project (as_webhook_update/PersonDataExtractor)\n- Terms, media report entries: respective source projects\n\nPayloads are JSON-encoded and authenticated via an Authorization header token configured in the Key module on the receiving site (key ID: as_webhook_entities_token).\n\nThe receiving endpoint queues payloads and processes them on cron (or immediately if crontrigger is enabled in settings).\n\nIMPORTANT — field_body.value: The article extractor sends body->processed (rendered HTML), not raw stored markup. Drupal media embeds become <img> tags with absolute artsci-as URLs before transmission. as_webhook_entities automatically downloads these images and rewrites the src attributes to local managed file URLs.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "Create node",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "\t{\"event\":\"create\",\"uuid\":\"09876\",\"title\":\"This node was created from a webhook notification\",\"body\":\"Read more of our great blog posts at <a href=\\\"https://www.bounteous.com/insights/\\\">bounteous.com</a>\",\"some_extraneous_value\":\"some additional value we don't need\"}"
+			"name": "Article",
+			"item": [
+				{
+					"name": "Article — create",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{webhook_token}}",
+								"type": "text",
+								"description": "Token configured in Key module on receiving site (as_webhook_entities_token)"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"create\",\n  \"type\": \"article\",\n  \"uuid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"status\": 1,\n  \"uid\": \"1\",\n  \"title\": \"Cornell researchers discover breakthrough in quantum computing\",\n  \"field_summary\": \"A Cornell team has achieved a major milestone in quantum error correction.\",\n  \"field_bylines\": \"Jane Smith\",\n  \"field_card_label\": \"Research\",\n  \"field_dateline\": \"Ithaca, N.Y.\",\n  \"field_media_sources\": \"Cornell Chronicle\",\n  \"field_external_media_source\": null,\n  \"field_departments_programs\": [\"Physics\", \"Applied and Engineering Physics\"],\n  \"field_tags\": [\"research\", \"quantum computing\"],\n  \"field_related_disciplines\": [\"Physics\"],\n  \"field_related_people\": [\"remote-uuid-of-faculty-member\"],\n  \"field_related_articles\": [],\n  \"field_portrait_image_path\": \"https://as.cornell.edu/sites/default/files/styles/4_5/public/2024-03/quantum-lab.jpg\",\n  \"field_portrait_image_alt\": \"Researchers working in the quantum computing lab\",\n  \"field_landscape_image_path\": \"https://as.cornell.edu/sites/default/files/styles/6_4_large/public/2024-03/quantum-lab.jpg\",\n  \"field_landscape_image_alt\": \"Researchers working in the quantum computing lab\",\n  \"field_thumbnail_image_path\": \"https://as.cornell.edu/sites/default/files/styles/1_1_thumbnail/public/2024-03/quantum-lab.jpg\",\n  \"field_thumbnail_image_alt\": \"Researchers working in the quantum computing lab\",\n  \"field_pano_image_path\": \"\",\n  \"field_pano_image_alt\": \"\",\n  \"field_body\": {\n    \"format\": \"full_html\",\n    \"value\": \"<p>Cornell researchers have achieved a major milestone in quantum error correction, bringing fault-tolerant quantum computers closer to reality.</p><figure class=\\\"caption caption-drupal-media align-center\\\"><img src=\\\"https://as.cornell.edu/sites/default/files/styles/full_width/public/2024-03/quantum-chip.jpg\\\" alt=\\\"A quantum processor chip\\\" width=\\\"800\\\" height=\\\"533\\\"><figcaption>The new quantum processor chip developed at Cornell.</figcaption></figure><p>The team, led by Professor John Doe, published their findings in <em>Nature Physics</em>.</p>\"\n  }\n}"
+						},
+						"url": {
+							"raw": "https://artsci-departments.lndo.site/webhook-entities/listener",
+							"protocol": "https",
+							"host": ["artsci-departments", "lndo", "site"],
+							"path": ["webhook-entities", "listener"]
+						},
+						"description": "Creates a new article node. All image fields (portrait, landscape, thumbnail, pano) are downloaded from artsci-as and stored as local media entities. Inline <img> tags in field_body.value are also localized."
+					},
+					"response": []
 				},
-				"url": {
-					"raw": "http://neville.lndo.site/webhook-entities/listener",
-					"protocol": "http",
-					"host": [
-						"neville",
-						"lndo",
-						"site"
-					],
-					"path": [
-						"webhook-entities",
-						"listener"
-					]
+				{
+					"name": "Article — update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{webhook_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"update\",\n  \"type\": \"article\",\n  \"uuid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"status\": 1,\n  \"uid\": \"1\",\n  \"title\": \"Cornell researchers discover breakthrough in quantum computing (updated)\",\n  \"field_summary\": \"Updated summary after peer review publication.\",\n  \"field_bylines\": \"Jane Smith\",\n  \"field_card_label\": \"Research\",\n  \"field_dateline\": \"Ithaca, N.Y.\",\n  \"field_media_sources\": \"Cornell Chronicle\",\n  \"field_external_media_source\": null,\n  \"field_departments_programs\": [\"Physics\"],\n  \"field_tags\": [\"research\", \"quantum computing\"],\n  \"field_related_disciplines\": [\"Physics\"],\n  \"field_related_people\": [],\n  \"field_related_articles\": [],\n  \"field_portrait_image_path\": \"https://as.cornell.edu/sites/default/files/styles/4_5/public/2024-03/quantum-lab.jpg\",\n  \"field_portrait_image_alt\": \"Researchers working in the quantum computing lab\",\n  \"field_landscape_image_path\": \"https://as.cornell.edu/sites/default/files/styles/6_4_large/public/2024-03/quantum-lab.jpg\",\n  \"field_landscape_image_alt\": \"Researchers working in the quantum computing lab\",\n  \"field_thumbnail_image_path\": \"https://as.cornell.edu/sites/default/files/styles/1_1_thumbnail/public/2024-03/quantum-lab.jpg\",\n  \"field_thumbnail_image_alt\": \"Researchers working in the quantum computing lab\",\n  \"field_pano_image_path\": \"\",\n  \"field_pano_image_alt\": \"\",\n  \"field_body\": {\n    \"format\": \"full_html\",\n    \"value\": \"<p>Updated body content. Cornell researchers have achieved a major milestone.</p>\"\n  }\n}"
+						},
+						"url": {
+							"raw": "https://artsci-departments.lndo.site/webhook-entities/listener",
+							"protocol": "https",
+							"host": ["artsci-departments", "lndo", "site"],
+							"path": ["webhook-entities", "listener"]
+						},
+						"description": "Updates an existing article node matched by uuid. If no matching node exists, a new one is created."
+					},
+					"response": []
+				},
+				{
+					"name": "Article — delete",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{webhook_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"delete\",\n  \"type\": \"article\",\n  \"uuid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n}"
+						},
+						"url": {
+							"raw": "https://artsci-departments.lndo.site/webhook-entities/listener",
+							"protocol": "https",
+							"host": ["artsci-departments", "lndo", "site"],
+							"path": ["webhook-entities", "listener"]
+						}
+					},
+					"response": []
 				}
-			},
-			"response": []
+			]
 		},
 		{
-			"name": "Update node",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "\t{\"event\":\"update\",\"uuid\":\"09876\",\"title\":\"This node was updated by a webhook notification\",\"body\":\"This body text has been updated\"}"
+			"name": "Person",
+			"description": "Person payloads originate from the artsci-people project, which also uses as_webhook_update.",
+			"item": [
+				{
+					"name": "Person — create",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{webhook_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"create\",\n  \"type\": \"person\",\n  \"uuid\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n  \"status\": 1,\n  \"uid\": \"1\",\n  \"title\": \"Jane Smith\",\n  \"field_departments_programs\": [\"Physics\"],\n  \"field_portrait_image_path\": \"https://as.cornell.edu/sites/default/files/styles/4_5/public/2024-01/jane-smith.jpg\",\n  \"field_portrait_image_alt\": \"Jane Smith\"\n}"
+						},
+						"url": {
+							"raw": "https://artsci-departments.lndo.site/webhook-entities/listener",
+							"protocol": "https",
+							"host": ["artsci-departments", "lndo", "site"],
+							"path": ["webhook-entities", "listener"]
+						}
+					},
+					"response": []
 				},
-				"url": {
-					"raw": "http://neville.lndo.site/webhook-entities/listener",
-					"protocol": "http",
-					"host": [
-						"neville",
-						"lndo",
-						"site"
-					],
-					"path": [
-						"webhook-entities",
-						"listener"
-					]
+				{
+					"name": "Person — delete",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{webhook_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"delete\",\n  \"type\": \"person\",\n  \"uuid\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\"\n}"
+						},
+						"url": {
+							"raw": "https://artsci-departments.lndo.site/webhook-entities/listener",
+							"protocol": "https",
+							"host": ["artsci-departments", "lndo", "site"],
+							"path": ["webhook-entities", "listener"]
+						}
+					},
+					"response": []
 				}
-			},
-			"response": []
+			]
 		},
 		{
-			"name": "Delete node",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "\t{\"event\":\"delete\",\"uuid\":\"09876\"}"
-				},
-				"url": {
-					"raw": "http://neville.lndo.site/webhook-entities/listener",
-					"protocol": "http",
-					"host": [
-						"neville",
-						"lndo",
-						"site"
-					],
-					"path": [
-						"webhook-entities",
-						"listener"
-					]
+			"name": "Term",
+			"item": [
+				{
+					"name": "Term — create",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{webhook_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"create\",\n  \"type\": \"term\",\n  \"uuid\": \"c3d4e5f6-a7b8-9012-cdef-123456789012\",\n  \"title\": \"Quantum Computing\",\n  \"vid\": \"discipline\",\n  \"field_departments_programs\": [\"Physics\"]\n}"
+						},
+						"url": {
+							"raw": "https://artsci-departments.lndo.site/webhook-entities/listener",
+							"protocol": "https",
+							"host": ["artsci-departments", "lndo", "site"],
+							"path": ["webhook-entities", "listener"]
+						}
+					},
+					"response": []
 				}
-			},
-			"response": []
+			]
 		}
 	],
 	"auth": {
@@ -104,7 +205,7 @@
 		"apikey": [
 			{
 				"key": "value",
-				"value": "123456",
+				"value": "{{webhook_token}}",
 				"type": "string"
 			},
 			{
@@ -114,5 +215,12 @@
 			}
 		]
 	},
+	"variable": [
+		{
+			"key": "webhook_token",
+			"value": "replace-with-token-from-key-module",
+			"description": "Authorization token configured in the Key module on the receiving site under key ID 'as_webhook_entities_token'. Find it at /admin/config/services/webhook-entities."
+		}
+	],
 	"protocolProfileBehavior": {}
 }
