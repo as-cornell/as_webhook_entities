@@ -58,6 +58,8 @@ class WebhookImageImporter {
     // original file rather than a styled derivative (any site directory).
     $url = html_entity_decode(strtok($url, '?'));
     $url = preg_replace('#/sites/([^/]+)/files/styles/[^/]+/public/#', '/sites/$1/files/', $url);
+    // as.cornell.edu serves files/first/ as a legacy alias for sites/default/files/.
+    $url = preg_replace('#/files/first/styles/[^/]+/public/#', '/files/first/', $url);
 
     $filename = urldecode(basename(parse_url($url, PHP_URL_PATH)));
     if (empty($filename)) {
