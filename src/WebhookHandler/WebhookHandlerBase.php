@@ -158,8 +158,7 @@ abstract class WebhookHandlerBase implements WebhookHandlerInterface {
    *
    * Looks up each department name in the departments_programs vocabulary and
    * reads field_domain_access_target_id from the matched term. Always prepends
-   * 'departments_as_cornell_edu'. Returns an empty array when the payload has
-   * no department data.
+   * 'departments_as_cornell_edu', even when the payload has no department data.
    *
    * @param object $entity_data
    *   The decoded webhook payload entity data object.
@@ -179,9 +178,7 @@ abstract class WebhookHandlerBase implements WebhookHandlerInterface {
         }
       }
     }
-    if (!empty($domains)) {
-      array_unshift($domains, 'departments_as_cornell_edu');
-    }
+    array_unshift($domains, 'departments_as_cornell_edu', 'as_cornell_edu');
     return array_unique($domains);
   }
 

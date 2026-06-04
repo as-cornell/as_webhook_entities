@@ -143,6 +143,11 @@ class WebhookCrudManager {
     $domain_schema = $this->getDomainSchema();
     $updated = FALSE;
 
+    // Preserve the original changed timestamp so webhook syncs do not alter it.
+    $original_changed = method_exists($existing_entity, 'getChangedTime')
+      ? $existing_entity->getChangedTime()
+      : NULL;
+
     if (!empty($entity_data->title) && $entity_data->type !== 'term') {
       $existing_entity->title = $entity_data->title;
       $existing_entity->set('uid', $entity_data->uid);
@@ -157,6 +162,9 @@ class WebhookCrudManager {
     $this->applyDepartmentsUpdate($existing_entity, $entity_data, $domain_schema);
 
     if ($updated) {
+      if ($original_changed !== NULL) {
+        $existing_entity->setChangedTime($original_changed);
+      }
       $existing_entity->save();
       $this->logger->notice('Entity @id updated via webhook notification.', [
         '@id' => $existing_entity->id(),
@@ -208,9 +216,9 @@ class WebhookCrudManager {
     if (!empty($dparray)) {
       $node_values['field_departments_programs'] = $dparray;
     }
-    if (!empty($daarray)) {
+    if ($is_departments) {
       sort($daarray);
-      array_unshift($daarray, 'departments_as_cornell_edu');
+      array_unshift($daarray, 'departments_as_cornell_edu', 'as_cornell_edu');
       $node_values['field_domain_access'] = $daarray;
     }
   }
@@ -251,8 +259,8 @@ class WebhookCrudManager {
         $existing_entity->set('field_related_department_program', $dparray);
       }
     }
-    if (!empty($daarray)) {
-      array_unshift($daarray, 'departments_as_cornell_edu');
+    if ($is_departments && ($type !== 'term' || !empty($daarray))) {
+      array_unshift($daarray, 'departments_as_cornell_edu', 'as_cornell_edu');
       $existing_entity->set($type === 'term' ? 'domain_access' : 'field_domain_access', $daarray);
     }
   }

@@ -55,11 +55,11 @@ class WebhookImageImporter {
    */
   public function importImage(string $url, string $alt, array $domains = []): ?int {
     // Strip query strings and HTML entities, then always resolve to the
-    // original file rather than a styled derivative.
+    // original file rather than a styled derivative (any site directory).
     $url = html_entity_decode(strtok($url, '?'));
-    $url = preg_replace('#/sites/default/files/styles/[^/]+/public/#', '/sites/default/files/', $url);
+    $url = preg_replace('#/sites/([^/]+)/files/styles/[^/]+/public/#', '/sites/$1/files/', $url);
 
-    $filename = basename(parse_url($url, PHP_URL_PATH));
+    $filename = urldecode(basename(parse_url($url, PHP_URL_PATH)));
     if (empty($filename)) {
       return NULL;
     }
@@ -263,6 +263,15 @@ class WebhookImageImporter {
     $name = trim($name, '-');
 
     if (empty($name)) {
+      return '';
+    }
+
+    $valid_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'tiff', 'tif'];
+    if ($ext && !in_array($ext, $valid_exts, TRUE)) {
+      $this->logger->warning('Webhook image import skipped: unrecognized extension ".@ext" in "@filename"', [
+        '@ext'      => $ext,
+        '@filename' => $filename,
+      ]);
       return '';
     }
 
