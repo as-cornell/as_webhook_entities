@@ -93,7 +93,7 @@ class WebhookCrudManager {
 
     $domain_schema = $this->getDomainSchema();
     $node_values = [
-      'title'  => $entity_data->title,
+      'title'  => trim($entity_data->title),
       'status' => (bool) $entity_data->status,
       'uid'    => $entity_data->uid,
     ];
@@ -149,7 +149,7 @@ class WebhookCrudManager {
       : NULL;
 
     if (!empty($entity_data->title) && $entity_data->type !== 'term') {
-      $existing_entity->title = $entity_data->title;
+      $existing_entity->title = trim($entity_data->title);
       $existing_entity->set('uid', $entity_data->uid);
       $existing_entity->set('status', (bool) $entity_data->status);
       $updated = TRUE;
