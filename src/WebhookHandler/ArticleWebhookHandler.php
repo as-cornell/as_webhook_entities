@@ -139,6 +139,9 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
         return $ts;
       }
     }
+    if (!empty($entity_data->created)) {
+      return (int) $entity_data->created;
+    }
     return NULL;
   }
 
