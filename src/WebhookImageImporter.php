@@ -92,7 +92,7 @@ class WebhookImageImporter {
         $this->fileSystem->prepareDirectory($dir, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
         $response = $this->httpClient->request('GET', $url, ['http_errors' => FALSE]);
         if ($response->getStatusCode() !== 200) {
-          $this->logger->warning('Webhook image import failed for @url: HTTP @code', [
+          $this->logger->notice('Webhook image import failed for @url: HTTP @code', [
             '@url'  => $url,
             '@code' => $response->getStatusCode(),
           ]);
@@ -108,7 +108,7 @@ class WebhookImageImporter {
         }
       }
       catch (\Exception $e) {
-        $this->logger->warning('Webhook image import failed for @url: @error', [
+        $this->logger->notice('Webhook image import failed for @url: @error', [
           '@url' => $url,
           '@error' => $e->getMessage(),
         ]);
@@ -199,7 +199,7 @@ class WebhookImageImporter {
 
         $mid = $this->importImage($src, $alt_m[1] ?? '', $domains);
         if (!$mid) {
-          return $figure;
+          return '';
         }
         $media = $this->entityTypeManager->getStorage('media')->load($mid);
         if (!$media) {
@@ -229,7 +229,7 @@ class WebhookImageImporter {
 
         $mid = $this->importImage($src, $alt_m[1] ?? '', $domains);
         if (!$mid) {
-          return $tag;
+          return '';
         }
         $media = $this->entityTypeManager->getStorage('media')->load($mid);
         if (!$media) {
