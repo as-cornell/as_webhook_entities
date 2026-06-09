@@ -44,4 +44,16 @@ interface WebhookHandlerInterface {
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void;
 
+  /**
+   * Returns a Unix timestamp to use as the node's changed value after create,
+   * or NULL to leave it at the default request time.
+   *
+   * @param object $entity_data
+   *   The decoded webhook payload entity data object.
+   *
+   * @return int|null
+   *   Unix timestamp, or NULL.
+   */
+  public function getChangedTime(object $entity_data): ?int;
+
 }
