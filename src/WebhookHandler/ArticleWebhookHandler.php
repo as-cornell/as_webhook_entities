@@ -128,6 +128,22 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
 
   /**
    * {@inheritdoc}
+   *
+   * Returns the dateline timestamp so the created node sorts by publication
+   * date rather than import date.
+   */
+  public function getChangedTime(object $entity_data): ?int {
+    if (!empty($entity_data->field_dateline)) {
+      $ts = strtotime($entity_data->field_dateline);
+      if ($ts !== FALSE && $ts > 0) {
+        return $ts;
+      }
+    }
+    return NULL;
+  }
+
+  /**
+   * {@inheritdoc}
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
     $existing_entity->set('field_portrait_image_path', $entity_data->field_portrait_image_path ?? NULL);

@@ -104,6 +104,24 @@ class WebhookCrudManager {
     try {
       $node = $this->entityTypeManager->getStorage('node')->create($node_values);
       $node->save();
+
+      // Drupal's ChangedItem::preSave() always overwrites changed to
+      // REQUEST_TIME. Fix it via direct DB update so imported articles sort
+      // by publication date, not import date.
+      $changed_ts = $this->getHandler($entity_data->type)?->getChangedTime($entity_data);
+      if ($changed_ts !== NULL) {
+        $db = \Drupal::database();
+        $db->update('node_field_data')
+          ->fields(['changed' => $changed_ts])
+          ->condition('nid', $node->id())
+          ->execute();
+        $db->update('node_field_revision')
+          ->fields(['changed' => $changed_ts])
+          ->condition('nid', $node->id())
+          ->condition('vid', $node->getRevisionId())
+          ->execute();
+      }
+
       $this->logger->notice('Node @id created to represent webhook entity @uuid', [
         '@id' => $node->id(),
         '@uuid' => $entity_data->uuid,

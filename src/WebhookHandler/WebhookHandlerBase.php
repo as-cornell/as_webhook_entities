@@ -44,6 +44,13 @@ abstract class WebhookHandlerBase implements WebhookHandlerInterface {
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function getChangedTime(object $entity_data): ?int {
+    return NULL;
+  }
+
+  /**
    * Looks up taxonomy term tids from an array of term names.
    *
    * @param array $names
