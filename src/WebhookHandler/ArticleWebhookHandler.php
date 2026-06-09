@@ -47,6 +47,16 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
   public function applyCreateFields(array &$node_values, object $entity_data, array $domain_schema): void {
     $node_values['type'] = 'article';
     $node_values['field_remote_uuid'] = $entity_data->uuid;
+
+    // Set created timestamp from dateline date field, falling back to the
+    // source node's created timestamp.
+    if (!empty($entity_data->field_dateline) && ($ts = strtotime($entity_data->field_dateline)) !== FALSE && $ts > 0) {
+      $node_values['created'] = $ts;
+    }
+    elseif (!empty($entity_data->created)) {
+      $node_values['created'] = (int) $entity_data->created;
+    }
+
     $node_values['field_bylines'] = $entity_data->field_bylines ?? NULL;
     $node_values['field_dateline'] = $entity_data->field_dateline ?? NULL;
     $node_values['field_external_media_source'] = $entity_data->field_external_media_source ?? NULL;
