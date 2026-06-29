@@ -102,6 +102,14 @@ class PersonWebhookHandler extends WebhookHandlerBase {
       );
     }
 
+    // field_external_profile_link from external profile link array.
+    if (!empty($entity_data->field_external_profile_link)) {
+      $node_values['field_external_profile_link'] = array_map(
+        fn($l) => ['uri' => $l->uri, 'title' => $l->title],
+        $entity_data->field_external_profile_link
+      );
+    }
+
     // Domain-specific fields for 'departments' and 'as' schemas.
     if (in_array($domain_schema['schema'] ?? '', ['departments', 'as'])) {
       $raarray = $this->lookupTermTidsByProperty('field_people_tid', (array) ($entity_data->field_research_areas ?? []));
@@ -231,6 +239,11 @@ class PersonWebhookHandler extends WebhookHandlerBase {
       // field_link.
       $existing_entity->set('field_link', !empty($entity_data->field_links)
         ? array_map(fn($l) => ['uri' => $l->uri, 'title' => $l->title], $entity_data->field_links)
+        : NULL);
+
+      // field_external_profile_link.
+      $existing_entity->set('field_external_profile_link', !empty($entity_data->field_external_profile_link)
+        ? array_map(fn($l) => ['uri' => $l->uri, 'title' => $l->title], $entity_data->field_external_profile_link)
         : NULL);
     }
   }
