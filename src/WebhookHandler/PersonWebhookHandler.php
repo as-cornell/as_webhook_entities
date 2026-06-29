@@ -161,8 +161,11 @@ class PersonWebhookHandler extends WebhookHandlerBase {
         : [];
       // Merge in any domains already on the node so joint appointments added
       // outside the webhook payload (e.g. manually) are preserved on the media.
-      $existing_domains = array_column($existing_entity->get('field_domain_access')->getValue(), 'target_id');
-      $domains = array_unique(array_merge($domains, $existing_domains));
+      // Guarded so the shared module works on sites without domain_access.
+      if ($existing_entity->hasField('field_domain_access')) {
+        $existing_domains = array_column($existing_entity->get('field_domain_access')->getValue(), 'target_id');
+        $domains = array_unique(array_merge($domains, $existing_domains));
+      }
       $mid = $this->imageImporter->importImage($entity_data->field_portrait_image_path, $alt, $domains);
       if ($mid) {
         $existing_entity->set('field_image', $mid);
