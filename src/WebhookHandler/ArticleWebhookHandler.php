@@ -65,14 +65,11 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
     }
     $node_values['field_card_label'] = $entity_data->field_card_label ?? NULL;
     $node_values['field_summary'] = $entity_data->field_summary ?? NULL;
-    $node_values['field_portrait_image_path'] = $entity_data->field_portrait_image_path ?? NULL;
-    $node_values['field_portrait_image_alt'] = $entity_data->field_portrait_image_alt ?? NULL;
-    $node_values['field_landscape_image_path'] = $entity_data->field_landscape_image_path ?? NULL;
-    $node_values['field_landscape_image_alt'] = $entity_data->field_landscape_image_alt ?? NULL;
-    $node_values['field_thumbnail_image_path'] = $entity_data->field_thumbnail_image_path ?? NULL;
-    $node_values['field_thumbnail_image_alt'] = $entity_data->field_thumbnail_image_alt ?? NULL;
-    $node_values['field_pano_image_path'] = $entity_data->field_pano_image_path ?? NULL;
-    $node_values['field_pano_image_alt'] = $entity_data->field_pano_image_alt ?? NULL;
+
+    // Remote image path/alt strings from the payload are no longer stored on the
+    // node; the import loop below pulls them straight from $entity_data and the
+    // imported media carries its own alt text. The legacy field_*_image_path and
+    // field_*_image_alt fields are being retired.
 
     // Import remote images as managed media entities, tagging each with the
     // article's domain_access values so they are visible on the correct domain.
@@ -149,14 +146,10 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
    * {@inheritdoc}
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
-    $existing_entity->set('field_portrait_image_path', $entity_data->field_portrait_image_path ?? NULL);
-    $existing_entity->set('field_portrait_image_alt', $entity_data->field_portrait_image_alt ?? NULL);
-    $existing_entity->set('field_landscape_image_path', $entity_data->field_landscape_image_path ?? NULL);
-    $existing_entity->set('field_landscape_image_alt', $entity_data->field_landscape_image_alt ?? NULL);
-    $existing_entity->set('field_thumbnail_image_path', $entity_data->field_thumbnail_image_path ?? NULL);
-    $existing_entity->set('field_thumbnail_image_alt', $entity_data->field_thumbnail_image_alt ?? NULL);
-    $existing_entity->set('field_pano_image_path', $entity_data->field_pano_image_path ?? NULL);
-    $existing_entity->set('field_pano_image_alt', $entity_data->field_pano_image_alt ?? NULL);
+    // Remote image path/alt strings from the payload are no longer stored on the
+    // node; the import loop below pulls them straight from $entity_data and the
+    // imported media carries its own alt text. The legacy field_*_image_path and
+    // field_*_image_alt fields are being retired.
 
     // Import remote images as managed media entities, tagging each with the
     // article's domain_access values so they are visible on the correct domain.
