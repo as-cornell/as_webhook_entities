@@ -296,6 +296,18 @@ class WebhookCrudManager {
   private function getDomainSchema(): array {
     $host = \Drupal::request()->getHost();
     $domain_schema = ['domain' => $host];
+
+    // Prefer an explicitly configured schema. Payloads are processed from the
+    // queue during cron, where the request host often does not match a known
+    // site domain (e.g. background/scheduled cron), which would leave the
+    // schema unset and cause schema-gated fields to be skipped on update. The
+    // receiving site's schema is fixed, so a configured value is authoritative.
+    $configured = \Drupal::config('as_webhook_entities.settings')->get('schema');
+    if (!empty($configured)) {
+      $domain_schema['schema'] = $configured;
+      return $domain_schema;
+    }
+
     $schemas = [
       'as' => [
         'artsci-as.lndo.site',

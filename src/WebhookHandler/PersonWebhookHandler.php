@@ -207,48 +207,51 @@ class PersonWebhookHandler extends WebhookHandlerBase {
       $existing_entity->set('field_academic_role', !empty($ararray) ? $ararray : NULL);
     }
 
-    // Domain: 'departments' or 'as' — research_areas, academic_interests, overview_research, field_link.
+    // Domain: 'departments' or 'as' — research_areas, academic_interests.
     if (in_array($domain_schema['schema'] ?? '', ['departments', 'as'])) {
       $raarray = $this->lookupTermTidsByProperty('field_people_tid', (array) ($entity_data->field_research_areas ?? []));
       $existing_entity->set('field_research_areas', !empty($raarray) ? $raarray : NULL);
 
       $aiarray = $this->lookupTermTidsByProperty('field_people_tid', (array) ($entity_data->field_academic_interests ?? []));
       $existing_entity->set('field_academic_interests', !empty($aiarray) ? $aiarray : NULL);
-
-      // Delete existing overview_research paragraphs and recreate.
-      $paragraph_field = 'field_overview_research';
-      if (!$existing_entity->get($paragraph_field)->isEmpty()) {
-        $paragraph_ids = array_column($existing_entity->get($paragraph_field)->getValue(), 'target_id');
-        if (!empty($paragraph_ids)) {
-          $paragraph_storage = \Drupal::entityTypeManager()->getStorage('paragraph');
-          $paragraph_storage->delete($paragraph_storage->loadMultiple($paragraph_ids));
-        }
-        $existing_entity->get($paragraph_field)->setValue([]);
-      }
-      if (!empty($entity_data->field_overview_research)) {
-        foreach ($entity_data->field_overview_research as $orr) {
-          $ordeptarray = $this->lookupTermTidsByNameInVocab((array) ($orr->departments_programs ?? []), 'departments_programs');
-          $paragraph = Paragraph::create([
-            'type' => 'overview_research',
-            'field_departments_programs' => $ordeptarray,
-            'field_description' => ['value' => $orr->overview, 'format' => $orr->format],
-            'field_person_research_focus' => ['value' => $orr->research, 'format' => $orr->format],
-          ]);
-          $paragraph->save();
-          $existing_entity->get($paragraph_field)->appendItem($paragraph);
-        }
-      }
-
-      // field_link.
-      $existing_entity->set('field_link', !empty($entity_data->field_links)
-        ? array_map(fn($l) => ['uri' => $l->uri, 'title' => $l->title], $entity_data->field_links)
-        : NULL);
-
-      // field_external_profile_link.
-      $existing_entity->set('field_external_profile_link', !empty($entity_data->field_external_profile_link)
-        ? array_map(fn($l) => ['uri' => $l->uri, 'title' => $l->title], $entity_data->field_external_profile_link)
-        : NULL);
     }
+
+    // Overview/research paragraphs and links are synced on every update,
+    // matching applyCreateFields() which sets them unconditionally. Kept out of
+    // the schema gate so they are never dropped when the schema is unavailable.
+    // Delete existing overview_research paragraphs and recreate.
+    $paragraph_field = 'field_overview_research';
+    if (!$existing_entity->get($paragraph_field)->isEmpty()) {
+      $paragraph_ids = array_column($existing_entity->get($paragraph_field)->getValue(), 'target_id');
+      if (!empty($paragraph_ids)) {
+        $paragraph_storage = \Drupal::entityTypeManager()->getStorage('paragraph');
+        $paragraph_storage->delete($paragraph_storage->loadMultiple($paragraph_ids));
+      }
+      $existing_entity->get($paragraph_field)->setValue([]);
+    }
+    if (!empty($entity_data->field_overview_research)) {
+      foreach ($entity_data->field_overview_research as $orr) {
+        $ordeptarray = $this->lookupTermTidsByNameInVocab((array) ($orr->departments_programs ?? []), 'departments_programs');
+        $paragraph = Paragraph::create([
+          'type' => 'overview_research',
+          'field_departments_programs' => $ordeptarray,
+          'field_description' => ['value' => $orr->overview, 'format' => $orr->format],
+          'field_person_research_focus' => ['value' => $orr->research, 'format' => $orr->format],
+        ]);
+        $paragraph->save();
+        $existing_entity->get($paragraph_field)->appendItem($paragraph);
+      }
+    }
+
+    // field_link.
+    $existing_entity->set('field_link', !empty($entity_data->field_links)
+      ? array_map(fn($l) => ['uri' => $l->uri, 'title' => $l->title], $entity_data->field_links)
+      : NULL);
+
+    // field_external_profile_link.
+    $existing_entity->set('field_external_profile_link', !empty($entity_data->field_external_profile_link)
+      ? array_map(fn($l) => ['uri' => $l->uri, 'title' => $l->title], $entity_data->field_external_profile_link)
+      : NULL);
   }
 
 }

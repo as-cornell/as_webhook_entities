@@ -114,6 +114,19 @@ class WebhookSettingsForm extends ConfigFormBase {
       ],
     ];
 
+    $form['schema'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Site schema'),
+      '#options' => [
+        '' => $this->t('- Auto-detect from request host -'),
+        'departments' => $this->t('Departments'),
+        'as' => $this->t('AS'),
+        'mediareport' => $this->t('Media Report'),
+      ],
+      '#default_value' => $config->get('schema') ?? '',
+      '#description' => $this->t('The schema for this site. Set this explicitly: queued payloads are processed during cron, where auto-detection from the request host is unreliable and can cause schema-specific fields (overview/research, research areas, academic interests/role) to be skipped on update.'),
+    ];
+
     $form['crontrigger'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Run cron immediately after receiving add/update/delete via listener.'),
@@ -163,9 +176,10 @@ class WebhookSettingsForm extends ConfigFormBase {
       $this->messenger()->addWarning($this->t('No changes were made to the token. Enter a new token to update it.'));
     }
 
-    // Save the crontrigger setting to config (this is fine to export).
+    // Save the crontrigger and schema settings to config (fine to export).
     $this->configFactory->getEditable(static::SETTINGS)
       ->set('crontrigger', $form_state->getValue('crontrigger'))
+      ->set('schema', $form_state->getValue('schema'))
       ->save();
 
     parent::submitForm($form, $form_state);
