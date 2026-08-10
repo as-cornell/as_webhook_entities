@@ -18,6 +18,26 @@ use Psr\Log\LoggerInterface;
 class WebhookImageImporter {
 
   /**
+   * View mode for the <drupal-media> tags written into imported body HTML.
+   *
+   * <drupal-media> is handled by core's media_embed filter, which reads the
+   * bare view mode name from data-view-mode -- not entity_embed's
+   * data-entity-embed-display / "view_mode:media.X" plugin ID form. Earlier
+   * releases emitted the latter, so the attribute was ignored and every embed
+   * silently fell back to the filter's default_view_mode.
+   *
+   * Hardcoded rather than read from the text format because it must be one of
+   * the filter's allowed_view_modes, and reading config here would add a
+   * dependency without changing the result. Keep this in step with
+   * filter.format.full_html: media_embed currently allows landscape, pano,
+   * portrait and thumbnail, and defaults to landscape -- so this value also
+   * preserves how existing content already renders.
+   *
+   * @see \Drupal\media\Plugin\Filter\MediaEmbed
+   */
+  protected const EMBED_VIEW_MODE = 'landscape';
+
+  /**
    * Constructs a WebhookImageImporter object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
@@ -213,7 +233,7 @@ class WebhookImageImporter {
 
         return '<drupal-media data-entity-type="media" data-entity-uuid="'
           . $media->uuid() . '"' . $align
-          . ' data-entity-embed-display="view_mode:media.embedded">'
+          . ' data-view-mode="' . self::EMBED_VIEW_MODE . '">'
           . '</drupal-media>';
       },
       $html
@@ -238,7 +258,7 @@ class WebhookImageImporter {
 
         return '<drupal-media data-entity-type="media" data-entity-uuid="'
           . $media->uuid() . '"'
-          . ' data-entity-embed-display="view_mode:media.embedded">'
+          . ' data-view-mode="' . self::EMBED_VIEW_MODE . '">'
           . '</drupal-media>';
       },
       $html
