@@ -49,8 +49,8 @@ class PersonWebhookHandler extends WebhookHandlerBase {
     $node_values['type'] = 'person';
     $node_values['field_remote_uuid'] = $entity_data->uuid;
     $node_values['field_netid'] = $entity_data->netid ?? NULL;
-    $node_values['field_person_last_name'] = $entity_data->field_person_last_name ?? NULL;
-    $node_values['field_job_title'] = $entity_data->field_job_title ?? NULL;
+    $node_values['field_person_last_name'] = $this->decodePlainText($entity_data->field_person_last_name ?? NULL);
+    $node_values['field_job_title'] = $this->decodePlainText($entity_data->field_job_title ?? NULL);
     $node_values['field_portrait_image_path'] = $entity_data->field_portrait_image_path ?? NULL;
     if (!empty($entity_data->field_portrait_image_path)) {
       $alt = 'Image of ' . ($entity_data->title ?? '');
@@ -62,8 +62,8 @@ class PersonWebhookHandler extends WebhookHandlerBase {
         $node_values['field_image'] = $mid;
       }
     }
-    $node_values['field_summary'] = $entity_data->field_summary ?? NULL;
-    $node_values['field_primary_college'] = $entity_data->field_primary_college ?? NULL;
+    $node_values['field_summary'] = $this->decodePlainText($entity_data->field_summary ?? NULL);
+    $node_values['field_primary_college'] = $this->decodePlainText($entity_data->field_primary_college ?? NULL);
     $node_values['field_affiliated_colleges'] = $entity_data->field_affiliated_colleges ?? [];
     $node_values['field_exclude_directory'] = (bool) ($entity_data->field_exclude_directory ?? FALSE);
     $node_values['field_hide_contact_info'] = (bool) ($entity_data->field_hide_contact_info ?? FALSE);
@@ -172,14 +172,14 @@ class PersonWebhookHandler extends WebhookHandlerBase {
       }
     }
     $existing_entity->set('field_netid', $entity_data->netid ?? NULL);
-    $existing_entity->set('field_person_last_name', $entity_data->field_person_last_name ?? NULL);
-    $existing_entity->set('field_summary', $entity_data->field_summary ?? NULL);
+    $existing_entity->set('field_person_last_name', $this->decodePlainText($entity_data->field_person_last_name ?? NULL));
+    $existing_entity->set('field_summary', $this->decodePlainText($entity_data->field_summary ?? NULL));
     $existing_entity->set('field_education', ['value' => $entity_data->field_education?->value ?? NULL, 'format' => $entity_data->field_education?->format ?? NULL]);
     $existing_entity->set('field_keywords', ['value' => $entity_data->field_keywords?->value ?? NULL, 'format' => $entity_data->field_keywords?->format ?? NULL]);
     $existing_entity->set('field_body', ['value' => $entity_data->field_body?->value ?? NULL, 'format' => $entity_data->field_body?->format ?? NULL]);
-    $existing_entity->set('field_primary_college', $entity_data->field_primary_college ?? NULL);
+    $existing_entity->set('field_primary_college', $this->decodePlainText($entity_data->field_primary_college ?? NULL));
     $existing_entity->set('field_affiliated_colleges', $entity_data->field_affiliated_colleges ?? []);
-    $existing_entity->set('field_job_title', $entity_data->field_job_title ?: NULL);
+    $existing_entity->set('field_job_title', $this->decodePlainText($entity_data->field_job_title ?: NULL));
     $existing_entity->set('field_exclude_directory', (bool) ($entity_data->field_exclude_directory ?? FALSE));
     $existing_entity->set('field_hide_contact_info', (bool) ($entity_data->field_hide_contact_info ?? FALSE));
 

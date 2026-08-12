@@ -215,4 +215,37 @@ abstract class WebhookHandlerBase implements WebhookHandlerInterface {
     return $nids;
   }
 
+  /**
+   * Decodes HTML entities in a value bound for a plain-text field.
+   *
+   * The source systems send some values HTML-encoded, so a department called
+   * "Astronomy & Space Sciences" arrives as "Astronomy &amp; Space Sciences".
+   * Writing that straight into a plain-text field stores the entity itself,
+   * and Twig then escapes the ampersand a second time on output, so the page
+   * displays the literal text "&amp;".
+   *
+   * ONLY use this for plain-text fields - string, string_long, list_string.
+   * Formatted-text fields (those carrying a 'format' alongside their 'value')
+   * are rendered as HTML, so entities in them are correct and decoding would
+   * corrupt the markup. On the person handler that means field_body,
+   * field_education and field_keywords must be left alone.
+   *
+   * Decoding is deliberately applied once rather than repeatedly. The stored
+   * values are singly encoded, and looping would eventually mangle text that
+   * legitimately contains an escaped ampersand.
+   *
+   * @param mixed $value
+   *   The incoming value. Non-strings are returned untouched so this can be
+   *   applied without having to check for NULL at every call site.
+   *
+   * @return mixed
+   *   The decoded string, or the original value when it is not a string.
+   */
+  protected function decodePlainText(mixed $value): mixed {
+    if (!is_string($value) || $value === '') {
+      return $value;
+    }
+    return html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+  }
+
 }
