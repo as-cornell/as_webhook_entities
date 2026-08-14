@@ -57,14 +57,17 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
       $node_values['created'] = (int) $entity_data->created;
     }
 
-    $node_values['field_bylines'] = $entity_data->field_bylines ?? NULL;
+    $node_values['field_bylines'] = $this->decodePlainText($entity_data->field_bylines ?? NULL);
     $node_values['field_dateline'] = $entity_data->field_dateline ?? NULL;
-    $node_values['field_external_media_source'] = $entity_data->field_external_media_source ?? NULL;
+    $node_values['field_external_media_source'] = $this->decodePlainText($entity_data->field_external_media_source ?? NULL);
     if (!empty($entity_data->field_media_sources)) {
       $node_values['field_media_source_reference'] = $this->lookupOrCreateTermByName($entity_data->field_media_sources, 'article_mediasources');
     }
-    $node_values['field_card_label'] = $entity_data->field_card_label ?? NULL;
-    $node_values['field_summary'] = $entity_data->field_summary ?? NULL;
+    $node_values['field_card_label'] = $this->decodePlainText($entity_data->field_card_label ?? NULL);
+    // The feed sends most articles with no summary. Fall back to the opening
+    // paragraph of the body so teasers do not render an empty summary line.
+    $node_values['field_summary'] = $this->decodePlainText($entity_data->field_summary ?? NULL)
+      ?: $this->deriveSummaryFromBody($entity_data->field_body->value ?? NULL);
 
     // Remote image path/alt strings from the payload are no longer stored on the
     // node; the import loop below pulls them straight from $entity_data and the
@@ -175,17 +178,20 @@ class ArticleWebhookHandler extends WebhookHandlerBase {
       'value'  => $this->imageImporter->processBodyHtml($entity_data->field_body?->value ?? '', $domains),
       'format' => $entity_data->field_body?->format ?? NULL,
     ]);
-    $existing_entity->set('field_bylines', $entity_data->field_bylines ?? NULL);
+    $existing_entity->set('field_bylines', $this->decodePlainText($entity_data->field_bylines ?? NULL));
     $existing_entity->set('field_dateline', $entity_data->field_dateline ?? NULL);
-    $existing_entity->set('field_external_media_source', $entity_data->field_external_media_source ?? NULL);
+    $existing_entity->set('field_external_media_source', $this->decodePlainText($entity_data->field_external_media_source ?? NULL));
     if (!empty($entity_data->field_media_sources)) {
       $existing_entity->set('field_media_source_reference', $this->lookupOrCreateTermByName($entity_data->field_media_sources, 'article_mediasources'));
     }
     else {
       $existing_entity->set('field_media_source_reference', NULL);
     }
-    $existing_entity->set('field_card_label', $entity_data->field_card_label ?? NULL);
-    $existing_entity->set('field_summary', $entity_data->field_summary ?? NULL);
+    $existing_entity->set('field_card_label', $this->decodePlainText($entity_data->field_card_label ?? NULL));
+    // As on create: fall back to the opening paragraph of the body when the
+    // feed sends no summary, so a re-sync does not blank an existing one.
+    $existing_entity->set('field_summary', $this->decodePlainText($entity_data->field_summary ?? NULL)
+      ?: $this->deriveSummaryFromBody($entity_data->field_body?->value ?? NULL));
 
     // Related disciplines lookup by term name within the discipline vocabulary.
     $tids = $this->lookupTermTidsByNameInVocab((array) ($entity_data->field_related_disciplines ?? []), 'discipline');

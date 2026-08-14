@@ -13,6 +13,17 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 abstract class WebhookHandlerBase implements WebhookHandlerInterface {
 
   /**
+   * Thresholds for deriveSummaryFromBody().
+   *
+   * A character floor alone lets junk through: a bare registration URL clears
+   * 60 characters on the strength of one token, and so does a one-line
+   * subtitle. Requiring a sentence's worth of words filters both.
+   */
+  protected const MIN_SUMMARY_WORDS = 12;
+  protected const MAX_SUMMARY_TOKEN = 60;
+  protected const MAX_SUMMARY_LENGTH = 600;
+
+  /**
    * The entity type manager service.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
@@ -246,6 +257,68 @@ abstract class WebhookHandlerBase implements WebhookHandlerInterface {
       return $value;
     }
     return html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+  }
+
+  /**
+   * Derives a plain-text summary from the first usable paragraph of body HTML.
+   *
+   * The upstream feed frequently sends articles with no summary - roughly two
+   * thirds of the archive arrived that way - and the teaser templates fall back
+   * to the summary field, so those articles render an empty summary line.
+   * Rather than leave the gap, take the opening paragraph of the body.
+   *
+   * "Usable" means at least MIN_SUMMARY_WORDS words with no single token longer
+   * than MAX_SUMMARY_TOKEN. Bodies often open with a bare registration URL or a
+   * one-line subtitle, which makes a worse summary than none; those are stepped
+   * over and the next paragraph is tried, so the article still gets a summary.
+   *
+   * @param string|null $html
+   *   Body markup from the payload, or NULL.
+   *
+   * @return string|null
+   *   Plain-text summary, or NULL when nothing usable was found.
+   */
+  protected function deriveSummaryFromBody(?string $html): ?string {
+    if ($html === NULL || trim($html) === '') {
+      return NULL;
+    }
+
+    $candidates = [];
+    if (preg_match_all('#<p[^>]*>(.*?)</p>#is', $html, $matches)) {
+      $candidates = $matches[1];
+    }
+    // Bodies without <p> wrappers still have text worth using.
+    $candidates[] = $html;
+
+    foreach ($candidates as $candidate) {
+      $text = html_entity_decode(strip_tags($candidate), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+      // Non-breaking spaces survive decoding and would skew the word count.
+      $text = str_replace("\xC2\xA0", ' ', $text);
+      $text = trim(preg_replace('/\s+/', ' ', $text));
+
+      $words = preg_split('/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY);
+      if (count($words) < self::MIN_SUMMARY_WORDS) {
+        continue;
+      }
+      // A paragraph carried by one long URL is not a summary.
+      $longest = 0;
+      foreach ($words as $word) {
+        $longest = max($longest, mb_strlen($word));
+      }
+      if ($longest > self::MAX_SUMMARY_TOKEN) {
+        continue;
+      }
+
+      if (mb_strlen($text) > self::MAX_SUMMARY_LENGTH) {
+        $cut = mb_substr($text, 0, self::MAX_SUMMARY_LENGTH);
+        $space = mb_strrpos($cut, ' ');
+        $text = ($space ? mb_substr($cut, 0, $space) : $cut) . '…';
+      }
+
+      return $text;
+    }
+
+    return NULL;
   }
 
 }
