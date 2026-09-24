@@ -91,12 +91,23 @@ class WebhookImageImporter {
       return NULL;
     }
 
-    $destination = 'public://webhook-images/' . $filename;
+    // Key the stored file on the source URL rather than the basename. Two people
+    // can both legitimately send hamilton.jpg, and they are not the same
+    // photograph. Including a digest of the URL gives each distinct source its
+    // own file while still letting a repeat of the same URL reuse one.
+    $key = substr(hash('sha256', $url), 0, 12);
+    $destination = 'public://webhook-images/' . $key . '-' . $filename;
 
-    // Reuse the existing managed file if it already exists anywhere in public://.
+    // Only reuse a file this importer previously created for this same source
+    // URL. The previous query matched any basename anywhere in public://, which
+    // let locally uploaded content be adopted as somebody's portrait: a person
+    // named Hamilton was given the illustration from an article about the
+    // musical, because both files happened to be called hamilton.jpg. Writing to
+    // a URL-keyed destination also means EXISTS_REPLACE below can no longer
+    // overwrite a different person's photograph.
     $fids = $this->entityTypeManager->getStorage('file')
       ->getQuery()
-      ->condition('uri', 'public://%/' . $filename, 'LIKE')
+      ->condition('uri', $destination)
       ->accessCheck(FALSE)
       ->range(0, 1)
       ->execute();
@@ -149,9 +160,15 @@ class WebhookImageImporter {
       $media = $media_storage->load((int) reset($existing));
     }
     else {
+      // Name the media after its subject rather than its filename. Plenty of
+      // sources legitimately send headshot.jpg, and a media library full of
+      // identically named items is how an editor ends up attaching the wrong
+      // face to a person. The alt text carries the name; fall back to the
+      // filename when it is empty.
+      $name = trim($alt) !== '' ? mb_substr(trim($alt), 0, 200) : $filename;
       $media = $media_storage->create([
         'bundle' => 'image',
-        'name' => $filename,
+        'name' => $name,
         'field_media_image' => [
           'target_id' => $file->id(),
           'alt' => $alt,
