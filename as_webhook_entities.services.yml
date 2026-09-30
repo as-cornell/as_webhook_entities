@@ -8,3 +8,9 @@ services:
   as_webhook_entities.uuid_lookup:
     class: Drupal\as_webhook_entities\WebhookUuidLookup
     arguments: ['@entity_type.manager']
+  # Shared by the bulk page/landing_page migration (via a Migrate process
+  # plugin) and by PageWebhookHandler for ongoing sync, so the rebuild logic
+  # exists once and the two paths cannot drift apart.
+  as_webhook_entities.paragraph_tree_builder:
+    class: Drupal\as_webhook_entities\ParagraphTreeBuilder
+    arguments: ['@entity_type.manager', '@as_webhook_entities.image_importer']

@@ -5,6 +5,8 @@ namespace Drupal\as_webhook_entities;
 use Drupal\as_webhook_entities\WebhookHandler\ArticleWebhookHandler;
 use Drupal\as_webhook_entities\WebhookHandler\MediaReportEntryWebhookHandler;
 use Drupal\as_webhook_entities\WebhookHandler\MediaReportPersonWebhookHandler;
+use Drupal\as_webhook_entities\ParagraphTreeBuilder;
+use Drupal\as_webhook_entities\WebhookHandler\PageWebhookHandler;
 use Drupal\as_webhook_entities\WebhookHandler\PersonWebhookHandler;
 use Drupal\as_webhook_entities\WebhookHandler\TermWebhookHandler;
 use Drupal\as_webhook_entities\WebhookHandler\WebhookHandlerInterface;
@@ -65,6 +67,13 @@ class WebhookCrudManager {
       'media_report_person' => new MediaReportPersonWebhookHandler($entity_type_manager),
       'term'                => new TermWebhookHandler($entity_type_manager, $logger),
     ];
+    // Page and landing_page share their whole field mapping and paragraph tree,
+    // so one class serves both with the bundle injected. Both get the same
+    // ParagraphTreeBuilder, which the bulk Migrate process plugin also uses, so
+    // the rebuild logic exists once and cannot drift between the two paths.
+    $tree_builder = new ParagraphTreeBuilder($entity_type_manager, $imageImporter);
+    $this->handlers['page'] = new PageWebhookHandler($entity_type_manager, $tree_builder, 'page');
+    $this->handlers['landing_page'] = new PageWebhookHandler($entity_type_manager, $tree_builder, 'landing_page');
   }
 
   /**
