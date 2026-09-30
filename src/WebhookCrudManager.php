@@ -71,9 +71,19 @@ class WebhookCrudManager {
     // so one class serves both with the bundle injected. Both get the same
     // ParagraphTreeBuilder, which the bulk Migrate process plugin also uses, so
     // the rebuild logic exists once and cannot drift between the two paths.
-    $tree_builder = new ParagraphTreeBuilder($entity_type_manager, $imageImporter);
-    $this->handlers['page'] = new PageWebhookHandler($entity_type_manager, $tree_builder, 'page');
-    $this->handlers['landing_page'] = new PageWebhookHandler($entity_type_manager, $tree_builder, 'landing_page');
+    //
+    // Registered only where the paragraph entity type exists. This module is
+    // shared with artsci-as and artsci-mediareport, which use it for person
+    // records, and mediareport does not have the paragraphs module installed.
+    // Constructing these is in fact harmless there, since PHP resolves the
+    // paragraph type hints lazily, but guarding states the requirement plainly
+    // rather than depending on that, and it turns a stray page payload into an
+    // unhandled type instead of a fatal error.
+    if ($entity_type_manager->hasDefinition('paragraph')) {
+      $tree_builder = new ParagraphTreeBuilder($entity_type_manager, $imageImporter);
+      $this->handlers['page'] = new PageWebhookHandler($entity_type_manager, $tree_builder, 'page');
+      $this->handlers['landing_page'] = new PageWebhookHandler($entity_type_manager, $tree_builder, 'landing_page');
+    }
   }
 
   /**

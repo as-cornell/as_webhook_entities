@@ -314,6 +314,19 @@ class ParagraphTreeBuilder {
         $mid = $this->importMedia($item, $context, $domains);
         return $mid ? ['target_id' => $mid] : NULL;
 
+      case 'paragraphs_library_item':
+        // Library items are curated separately on each site rather than
+        // migrated, so match on UUID first and fall back to the label. An
+        // unresolved one means the component renders empty, which is why it is
+        // recorded rather than dropped.
+        $id = $this->lookupLibraryItem($item['uuid'] ?? '', $item['label'] ?? '');
+        if ($id === NULL) {
+          $this->issues[] = sprintf('unresolved library item "%s" (uuid %s) for %s',
+            $item['label'] ?? '?', substr((string) ($item['uuid'] ?? ''), 0, 12), $context);
+          return NULL;
+        }
+        return ['target_id' => $id];
+
       default:
         $this->issues[] = sprintf('unhandled reference type "%s" for %s', $item['_ref'], $context);
         return NULL;
@@ -442,6 +455,40 @@ class ParagraphTreeBuilder {
     }
     $node = reset($nodes);
     return (int) $node->id();
+  }
+
+  /**
+   * Looks up a paragraphs library item by UUID, falling back to its label.
+   *
+   * @param string $uuid
+   *   The source library item UUID.
+   * @param string $label
+   *   The source label, used when the UUID does not match.
+   *
+   * @return int|null
+   *   The library item id, or NULL when neither matches unambiguously.
+   */
+  protected function lookupLibraryItem(string $uuid, string $label): ?int {
+    if (!$this->entityTypeManager->hasDefinition('paragraphs_library_item')) {
+      return NULL;
+    }
+    $storage = $this->entityTypeManager->getStorage('paragraphs_library_item');
+
+    if (trim($uuid) !== '') {
+      $found = $storage->loadByProperties(['uuid' => $uuid]);
+      if ($found) {
+        return (int) reset($found)->id();
+      }
+    }
+    if (trim($label) !== '') {
+      $found = $storage->loadByProperties(['label' => $label]);
+      // Only an unambiguous match: two library items could share a label, and
+      // guessing would silently place the wrong shared component on a page.
+      if (count($found) === 1) {
+        return (int) reset($found)->id();
+      }
+    }
+    return NULL;
   }
 
   /**
