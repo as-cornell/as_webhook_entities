@@ -9,7 +9,9 @@ use Drupal\as_webhook_entities\ParagraphTreeBuilder;
 use Drupal\as_webhook_entities\WebhookHandler\PageWebhookHandler;
 use Drupal\as_webhook_entities\WebhookHandler\PersonWebhookHandler;
 use Drupal\as_webhook_entities\WebhookHandler\TermWebhookHandler;
+use Drupal\as_webhook_entities\WebhookHandler\WebhookHandlerFinishSaveInterface;
 use Drupal\as_webhook_entities\WebhookHandler\WebhookHandlerInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -56,8 +58,10 @@ class WebhookCrudManager {
    *   A logger instance.
    * @param \Drupal\as_webhook_entities\WebhookImageImporter $imageImporter
    *   The webhook image importer service.
+   * @param \Drupal\as_webhook_entities\ParagraphTreeBuilder|null $tree_builder
+   *   The shared paragraph tree builder, for the page handlers.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, LoggerInterface $logger, WebhookImageImporter $imageImporter) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, LoggerInterface $logger, WebhookImageImporter $imageImporter, ?ParagraphTreeBuilder $tree_builder = NULL) {
     $this->entityTypeManager = $entity_type_manager;
     $this->logger = $logger;
     $this->handlers = [
@@ -79,8 +83,7 @@ class WebhookCrudManager {
     // paragraph type hints lazily, but guarding states the requirement plainly
     // rather than depending on that, and it turns a stray page payload into an
     // unhandled type instead of a fatal error.
-    if ($entity_type_manager->hasDefinition('paragraph')) {
-      $tree_builder = new ParagraphTreeBuilder($entity_type_manager, $imageImporter);
+    if ($tree_builder && $entity_type_manager->hasDefinition('paragraph')) {
       $this->handlers['page'] = new PageWebhookHandler($entity_type_manager, $tree_builder, 'page');
       $this->handlers['landing_page'] = new PageWebhookHandler($entity_type_manager, $tree_builder, 'landing_page');
     }
@@ -120,25 +123,18 @@ class WebhookCrudManager {
     $this->getHandler($entity_data->type)?->applyCreateFields($node_values, $entity_data, $domain_schema);
     $this->applyDepartmentsCreate($node_values, $entity_data, $domain_schema);
 
+    $node = NULL;
     try {
       $node = $this->entityTypeManager->getStorage('node')->create($node_values);
       $node->save();
+      $this->finishSave($entity_data->type, $node, TRUE);
 
       // Drupal's ChangedItem::preSave() always overwrites changed to
       // REQUEST_TIME. Fix it via direct DB update so imported articles sort
       // by publication date, not import date.
       $changed_ts = $this->getHandler($entity_data->type)?->getChangedTime($entity_data);
       if ($changed_ts !== NULL) {
-        $db = \Drupal::database();
-        $db->update('node_field_data')
-          ->fields(['changed' => $changed_ts])
-          ->condition('nid', $node->id())
-          ->execute();
-        $db->update('node_field_revision')
-          ->fields(['changed' => $changed_ts])
-          ->condition('nid', $node->id())
-          ->condition('vid', $node->getRevisionId())
-          ->execute();
+        $this->writeChangedTime($node, $changed_ts);
       }
 
       $this->logger->notice('Node @id created to represent webhook entity @uuid', [
@@ -147,6 +143,9 @@ class WebhookCrudManager {
       ]);
     }
     catch (\Exception $e) {
+      if (!$node || $node->isNew()) {
+        $this->finishSave($entity_data->type, NULL, FALSE);
+      }
       $this->logger->warning('A node could not be created to represent webhook entity @uuid. @error', [
         '@uuid' => $entity_data->uuid,
         '@error' => $e->getMessage(),
@@ -198,15 +197,74 @@ class WebhookCrudManager {
     $this->getHandler($entity_data->type)?->applyUpdateFields($existing_entity, $entity_data, $domain_schema);
     $this->applyDepartmentsUpdate($existing_entity, $entity_data, $domain_schema);
 
-    if ($updated) {
-      if ($original_changed !== NULL) {
-        $existing_entity->setChangedTime($original_changed);
-      }
+    if (!$updated) {
+      $this->finishSave($entity_data->type, $existing_entity, FALSE);
+      return;
+    }
+
+    try {
       $existing_entity->save();
-      $this->logger->notice('Entity @id updated via webhook notification.', [
-        '@id' => $existing_entity->id(),
-        '@type' => $entity_data->type,
-      ]);
+    }
+    catch (\Exception $e) {
+      $this->finishSave($entity_data->type, $existing_entity, FALSE);
+      throw $e;
+    }
+    // Setting changed before the save does not survive it: ChangedItem sees
+    // the value it already had, treats it as untouched, and stamps the request
+    // time whenever any other field changed. So it is written back afterwards.
+    if ($original_changed !== NULL) {
+      $this->writeChangedTime($existing_entity, $original_changed);
+    }
+    $this->finishSave($entity_data->type, $existing_entity, TRUE);
+    $this->logger->notice('Entity @id updated via webhook notification.', [
+      '@id' => $existing_entity->id(),
+      '@type' => $entity_data->type,
+    ]);
+  }
+
+  /**
+   * Writes a node's changed timestamp directly, after it has been saved.
+   *
+   * ChangedItem::preSave() overrides any value set through the entity API, so
+   * this is the only way to keep a chosen timestamp. The entity cache is reset
+   * so the next load reads the stored value rather than the request time.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $node
+   *   The saved node.
+   * @param int $timestamp
+   *   The changed time to keep.
+   */
+  protected function writeChangedTime(EntityInterface $node, int $timestamp): void {
+    if ($node->getEntityTypeId() !== 'node') {
+      return;
+    }
+    $db = \Drupal::database();
+    $db->update('node_field_data')
+      ->fields(['changed' => $timestamp])
+      ->condition('nid', $node->id())
+      ->execute();
+    $db->update('node_field_revision')
+      ->fields(['changed' => $timestamp])
+      ->condition('nid', $node->id())
+      ->condition('vid', $node->getRevisionId())
+      ->execute();
+    $this->entityTypeManager->getStorage('node')->resetCache([$node->id()]);
+  }
+
+  /**
+   * Lets the type's handler finish once a save has succeeded or failed.
+   *
+   * @param string $type
+   *   The webhook entity type key.
+   * @param \Drupal\Core\Entity\EntityInterface|null $entity
+   *   The node, or NULL when a create failed before one existed.
+   * @param bool $saved
+   *   TRUE when the save succeeded.
+   */
+  protected function finishSave(string $type, ?EntityInterface $entity, bool $saved): void {
+    $handler = $this->getHandler($type);
+    if ($handler instanceof WebhookHandlerFinishSaveInterface) {
+      $handler->finishSave($entity, $saved);
     }
   }
 
