@@ -24,7 +24,7 @@ Receives webhook notifications from remote systems and creates, updates, or dele
 
 2. **Configure the module settings:**
    - Navigate to `/admin/config/as_webhook_entities/settings`
-   - Configure the authorization token and cron trigger settings
+   - Configure the authorization token and whether to process notifications as they arrive
 
 3. **Verify the queue worker is registered:**
    ```bash
@@ -47,8 +47,10 @@ Receives webhook notifications from remote systems and creates, updates, or dele
 ## CONFIGURATION
 
 - **Settings UI:** `/admin/config/as_webhook_entities/settings`
-- Runs on cron (`webhook_entities_processor` queue, 30 seconds per cron run)
-- Cron can be triggered on receipt via the `crontrigger` setting
+- Notifications are queued (`webhook_entities_processor`) and the listener answers at once
+- With "Process notifications as soon as they arrive" on (config key `crontrigger`), the queue is drained in batches right after the listener responds, and the batch's nodes are indexed in Search API; see `WebhookQueueDrainer`
+- A drain stops claiming after 40 seconds and, if items remain, posts an empty body to its own listener to start the next one, so nothing waits for cron
+- Cron still drains the queue (30 seconds per run), which is the only processing when the setting is off
 - Logs create/update/delete operations as `as_webhook_entities`
 
 ## ARCHITECTURE

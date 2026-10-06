@@ -5,7 +5,7 @@ namespace Drupal\as_webhook_entities\Controller;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Queue\QueueFactory;
-use Drupal\Core\ProxyClass\Cron;
+use Drupal\as_webhook_entities\WebhookQueueDrainer;
 use Drupal\Component\Utility\Html;
 use Drupal\key\KeyRepositoryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -32,11 +32,11 @@ class WebhookEntitiesController extends ControllerBase {
   protected $queueFactory;
 
   /**
-   * The cron service.
+   * Processes queued notifications after the response is sent.
    *
-   * @var \Drupal\Core\Cron
+   * @var \Drupal\as_webhook_entities\WebhookQueueDrainer
    */
-  protected $cron;
+  protected $drainer;
 
   /**
    * The key repository service.
@@ -52,15 +52,15 @@ class WebhookEntitiesController extends ControllerBase {
    *   The HTTP request object.
    * @param \Drupal\Core\Queue\QueueFactory $queue
    *   The queue factory.
-   * @param \Drupal\Core\Cron $cron
-   *   The cron service.
+   * @param \Drupal\as_webhook_entities\WebhookQueueDrainer $drainer
+   *   The queue drainer.
    * @param \Drupal\key\KeyRepositoryInterface $key_repository
    *   The key repository service.
    */
-  public function __construct(Request $request, QueueFactory $queue, Cron $cron, KeyRepositoryInterface $key_repository) {
+  public function __construct(Request $request, QueueFactory $queue, WebhookQueueDrainer $drainer, KeyRepositoryInterface $key_repository) {
     $this->request = $request;
     $this->queueFactory = $queue;
-    $this->cron = $cron;
+    $this->drainer = $drainer;
     $this->keyRepository = $key_repository;
   }
 
@@ -71,7 +71,7 @@ class WebhookEntitiesController extends ControllerBase {
     return new static(
       $container->get('request_stack')->getCurrentRequest(),
       $container->get('queue'),
-      $container->get('cron'),
+      $container->get('as_webhook_entities.queue_drainer'),
       $container->get('key.repository')
     );
   }
@@ -90,29 +90,19 @@ class WebhookEntitiesController extends ControllerBase {
     // Capture the contents of the notification (payload).
     $payload = $this->request->getContent();
 
-    // Get the queue implementation.
-    $queue = $this->queueFactory->get('webhook_entities_processor');
-
-    // Add the $payload to the queue.
-    $queue->createItem($payload);
-
-    // Run cron for immediate gratification
-    // check config to see if we want to trigger cron
-    $crontrigger = \Drupal::config('as_webhook_entities.settings')->get('crontrigger');
-    //check to see if there's an active cron run
-    $cronlock = \Drupal::lock()->acquire('cron', 0.0);
-    // release the cron lock we just did as a test
-    \Drupal::lock()->release('cron');
-    
-    if ($crontrigger == TRUE && $cronlock == TRUE ){
-    //run cron
-    $this->cron->run();
-    // log a message for debug
-    \Drupal::logger('as_webhook_entities')
-            ->info('Cron run was triggered by WebhookEntitiesController. crontrigger was: '. json_encode($crontrigger).' cronlock was: '.json_encode($cronlock).'.');
+    // An empty body is a follow-up drain request from this site itself (see
+    // WebhookQueueDrainer::continueElsewhere()), not a notification.
+    $follow_up = trim($payload) === '';
+    if (!$follow_up) {
+      $this->queueFactory->get('webhook_entities_processor')->createItem($payload);
     }
 
-
+    // Process after the response is sent, in a batch with anything else that
+    // arrives meanwhile. This replaces running a full cron in the request,
+    // which made the sender wait and hit its cURL timeout.
+    if ($this->drainer->isEnabled()) {
+      $this->drainer->request(!$follow_up);
+    }
 
     // Respond with the success message.
     return $response;

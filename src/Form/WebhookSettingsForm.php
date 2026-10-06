@@ -129,7 +129,8 @@ class WebhookSettingsForm extends ConfigFormBase {
 
     $form['crontrigger'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t('Run cron immediately after receiving add/update/delete via listener.'),
+      '#title' => $this->t('Process notifications as soon as they arrive.'),
+      '#description' => $this->t('Processes the queue in batches right after the listener responds, so the sending site never waits and changes appear within a minute. When off, notifications wait for the next cron run.'),
       '#default_value' => $config->get('crontrigger') ?? FALSE,
     ];
 

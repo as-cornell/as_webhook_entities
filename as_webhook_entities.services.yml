@@ -14,3 +14,10 @@ services:
   as_webhook_entities.paragraph_tree_builder:
     class: Drupal\as_webhook_entities\ParagraphTreeBuilder
     arguments: ['@entity_type.manager', '@as_webhook_entities.image_importer', '@?entity_reference_revisions.orphan_purger']
+  # Batches received notifications after the listener has responded. Also a
+  # kernel.terminate subscriber, which is where the drain runs.
+  as_webhook_entities.queue_drainer:
+    class: Drupal\as_webhook_entities\WebhookQueueDrainer
+    arguments: ['@queue', '@plugin.manager.queue_worker', '@lock', '@entity_type.manager', '@module_handler', '@config.factory', '@key.repository', '@http_client', '@request_stack', '@datetime.time', '@logger.channel.default', '@as_webhook_entities.uuid_lookup']
+    tags:
+      - { name: event_subscriber }
