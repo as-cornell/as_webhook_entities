@@ -5,15 +5,17 @@ namespace Drupal\as_webhook_entities;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\crop\Entity\Crop;
+use Drupal\file\FileInterface;
 use GuzzleHttp\ClientInterface;
 use Psr\Log\LoggerInterface;
 
 /**
  * Downloads remote images and creates or reuses Drupal file and media entities.
  *
- * If the destination file already exists locally it is reused without
- * re-downloading. If a media entity of bundle 'image' already references
- * the file it is returned as-is.
+ * A file is reused only when it was stored earlier for the same source URL,
+ * or when its bytes are identical to the download; never on a matching name.
+ * If a media entity of bundle 'image' already references the file it is
+ * returned as-is.
  */
 class WebhookImageImporter {
 
@@ -36,6 +38,25 @@ class WebhookImageImporter {
    * @see \Drupal\media\Plugin\Filter\MediaEmbed
    */
   protected const EMBED_VIEW_MODE = 'landscape';
+
+  /**
+   * Most same-named files compared byte for byte in one lookup.
+   *
+   * Generic names such as headshot.jpg recur, and each comparison hashes a
+   * file on disk, so this bounds the cost. Past the limit the image is simply
+   * stored as new, which is the safe direction to fail.
+   */
+  protected const MAX_CONTENT_CANDIDATES = 50;
+
+  /**
+   * Entity ids this importer created, until a caller takes them.
+   *
+   * Lets a caller that can be undone, such as a migration rollback, remove
+   * exactly what it caused and never media or files that already existed.
+   *
+   * @var array{media: int[], file: int[]}
+   */
+  protected array $created = ['media' => [], 'file' => []];
 
   /**
    * Constructs a WebhookImageImporter object.
@@ -96,31 +117,29 @@ class WebhookImageImporter {
     // photograph. Including a digest of the URL gives each distinct source its
     // own file while still letting a repeat of the same URL reuse one.
     $key = substr(hash('sha256', $url), 0, 12);
-    $destination = 'public://webhook-images/' . $key . '-' . $filename;
+    $keyed_name = $key . '-' . $filename;
+    $destination = 'public://webhook-images/' . $keyed_name;
 
-    // Only reuse a file this importer previously created for this same source
-    // URL. The previous query matched any basename anywhere in public://, which
-    // let locally uploaded content be adopted as somebody's portrait: a person
-    // named Hamilton was given the illustration from an article about the
-    // musical, because both files happened to be called hamilton.jpg. Writing to
-    // a URL-keyed destination also means EXISTS_REPLACE below can no longer
-    // overwrite a different person's photograph.
-    $fids = $this->entityTypeManager->getStorage('file')
-      ->getQuery()
-      ->condition('uri', $destination)
-      ->accessCheck(FALSE)
-      ->range(0, 1)
-      ->execute();
-    $files = $fids ? $this->entityTypeManager->getStorage('file')->loadMultiple($fids) : [];
+    // Reuse never rests on a filename alone. Matching any basename anywhere in
+    // public:// is how a person named Hamilton was given the illustration from
+    // an article about the musical, because both files were called
+    // hamilton.jpg. So there are exactly two ways to reuse a file:
+    //
+    // 1. One this importer made earlier for the same source URL. The URL
+    //    digest is in the filename, so this is safe without downloading.
+    // 2. A file whose bytes are identical to the download. A same-named file
+    //    is only a candidate, so a different photograph can never be adopted.
+    //
+    // Writing to a URL-keyed destination also means EXISTS_REPLACE below can
+    // no longer overwrite a different person's photograph.
+    $file = $this->findKeyedFile($keyed_name);
+    // Files this importer wrote get its default crops. A file adopted by
+    // content match belongs to earlier content and is left exactly as it is,
+    // because adding a crop where there was none changes how it renders there.
+    $owned = (bool) $file;
 
-    if (!empty($files)) {
-      $file = reset($files);
-      $this->applyCrops($file);
-    }
-    else {
+    if (!$file) {
       try {
-        $dir = dirname($destination);
-        $this->fileSystem->prepareDirectory($dir, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
         $response = $this->httpClient->request('GET', $url, ['http_errors' => FALSE]);
         if ($response->getStatusCode() !== 200) {
           $this->logger->notice('Webhook image import failed for @url: HTTP @code', [
@@ -129,13 +148,17 @@ class WebhookImageImporter {
           ]);
           return NULL;
         }
-        $file = $this->fileRepository->writeData(
-          $response->getBody()->getContents(),
-          $destination,
-          FileSystemInterface::EXISTS_REPLACE
-        );
-        if ($file) {
-          $this->applyCrops($file);
+        $data = $response->getBody()->getContents();
+
+        $file = $this->findIdenticalFile($filename, $data);
+        if (!$file) {
+          $dir = dirname($destination);
+          $this->fileSystem->prepareDirectory($dir, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
+          $file = $this->fileRepository->writeData($data, $destination, FileSystemInterface::EXISTS_REPLACE);
+          if ($file) {
+            $this->created['file'][] = (int) $file->id();
+            $owned = TRUE;
+          }
         }
       }
       catch (\Exception $e) {
@@ -147,12 +170,18 @@ class WebhookImageImporter {
       }
     }
 
-    // Reuse an existing media entity that already references this file,
-    // or create a new one.
+    if (!$file) {
+      return NULL;
+    }
+
+    // Reuse an existing media entity that already references this file, the
+    // oldest when there are several, or create a new one.
     $media_storage = $this->entityTypeManager->getStorage('media');
     $existing = $media_storage->getQuery()
       ->condition('bundle', 'image')
       ->condition('field_media_image.target_id', $file->id())
+      ->sort('mid')
+      ->range(0, 1)
       ->accessCheck(FALSE)
       ->execute();
 
@@ -175,6 +204,20 @@ class WebhookImageImporter {
         ],
       ]);
       $media->save();
+      $this->created['media'][] = (int) $media->id();
+    }
+
+    // Crops are keyed on the file URI, so they must follow the media save:
+    // filefield_paths moves the file to public://YYYY-MM when the media is
+    // first saved, and a crop made before that stays on the old webhook-images
+    // URI, matching nothing.
+    if ($owned) {
+      $file_storage = $this->entityTypeManager->getStorage('file');
+      $file_storage->resetCache([$file->id()]);
+      $moved = $file_storage->load($file->id());
+      if ($moved) {
+        $this->applyCrops($moved);
+      }
     }
 
     // Apply any domain_access values not already present on the media entity.
@@ -283,6 +326,125 @@ class WebhookImageImporter {
   }
 
   /**
+   * Returns and clears the ids of media and files created since the last call.
+   *
+   * @return array{media: int[], file: int[]}
+   *   Ids created by this importer, never ids it merely reused.
+   */
+  public function takeCreated(): array {
+    $created = $this->created;
+    $this->created = ['media' => [], 'file' => []];
+    return $created;
+  }
+
+  /**
+   * Finds a file this importer stored earlier for the same source URL.
+   *
+   * The filefield_paths module moves every file out of webhook-images into
+   * public://YYYY-MM when its media is saved, so the original destination URI
+   * never matches anything. The digest-prefixed name survives the move, in
+   * both the filename column and the final URI, so it is the key to look up.
+   *
+   * @param string $keyed_name
+   *   The digest-prefixed filename.
+   *
+   * @return \Drupal\file\FileInterface|null
+   *   The file, preferring one that already backs a media entity.
+   */
+  protected function findKeyedFile(string $keyed_name): ?FileInterface {
+    $fids = $this->entityTypeManager->getStorage('file')
+      ->getQuery()
+      ->condition('filename', $keyed_name)
+      ->sort('fid')
+      ->accessCheck(FALSE)
+      ->execute();
+    $files = array_filter(
+      $fids ? $this->entityTypeManager->getStorage('file')->loadMultiple($fids) : [],
+      fn(FileInterface $file) => file_exists($file->getFileUri())
+    );
+    return $this->preferMediaBacked($files);
+  }
+
+  /**
+   * Finds an existing file whose bytes are identical to a download.
+   *
+   * Covers images stored before files were keyed on their URL, such as the
+   * June 2026 article import, and the same image reached by two URLs. The name
+   * only selects candidates; identity is decided by size and SHA-256 of the
+   * content, so a different picture with the same name is never reused.
+   *
+   * @param string $filename
+   *   The sanitized source filename.
+   * @param string $data
+   *   The downloaded bytes.
+   *
+   * @return \Drupal\file\FileInterface|null
+   *   The matching file, preferring one that already backs a media entity.
+   */
+  protected function findIdenticalFile(string $filename, string $data): ?FileInterface {
+    $storage = $this->entityTypeManager->getStorage('file');
+    $query = $storage->getQuery()->accessCheck(FALSE);
+    // The bare name, or the same name behind any 12-character digest.
+    $like = str_repeat('_', 12) . '-' . addcslashes($filename, '\\%_');
+    $query->condition($query->orConditionGroup()
+      ->condition('filename', $filename)
+      ->condition('filename', $like, 'LIKE'));
+    $fids = $query->condition('filesize', strlen($data))
+      ->sort('fid')
+      ->range(0, static::MAX_CONTENT_CANDIDATES)
+      ->execute();
+    if (!$fids) {
+      return NULL;
+    }
+
+    $hash = hash('sha256', $data);
+    $matches = array_filter(
+      $storage->loadMultiple($fids),
+      function (FileInterface $file) use ($hash): bool {
+        $uri = $file->getFileUri();
+        return file_exists($uri) && hash_file('sha256', $uri) === $hash;
+      }
+    );
+    return $this->preferMediaBacked($matches);
+  }
+
+  /**
+   * Picks one file from equivalent candidates.
+   *
+   * Prefers the oldest file already referenced by an image media entity, so
+   * reuse lands on the existing media rather than minting a new one around a
+   * duplicate file; otherwise the oldest file.
+   *
+   * @param \Drupal\file\FileInterface[] $files
+   *   Equivalent files keyed by id.
+   *
+   * @return \Drupal\file\FileInterface|null
+   *   The chosen file.
+   */
+  protected function preferMediaBacked(array $files): ?FileInterface {
+    if (!$files) {
+      return NULL;
+    }
+    $mids = $this->entityTypeManager->getStorage('media')
+      ->getQuery()
+      ->condition('bundle', 'image')
+      ->condition('field_media_image.target_id', array_keys($files), 'IN')
+      ->sort('mid')
+      ->range(0, 1)
+      ->accessCheck(FALSE)
+      ->execute();
+    if ($mids) {
+      $media = $this->entityTypeManager->getStorage('media')->load((int) reset($mids));
+      $fid = $media ? (int) $media->get('field_media_image')->target_id : 0;
+      if (isset($files[$fid])) {
+        return $files[$fid];
+      }
+    }
+    ksort($files);
+    return reset($files);
+  }
+
+  /**
    * Sanitizes a filename to lowercase with hyphens and no special characters.
    *
    * @param string $filename
@@ -326,7 +488,7 @@ class WebhookImageImporter {
    * @param \Drupal\file\FileInterface $file
    *   The managed file entity to crop.
    */
-  protected function applyCrops(\Drupal\file\FileInterface $file): void {
+  protected function applyCrops(FileInterface $file): void {
     $uri      = $file->getFileUri();
     $realpath = $this->fileSystem->realpath($uri);
     if (empty($realpath) || !file_exists($realpath)) {
