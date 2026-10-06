@@ -4,7 +4,7 @@ services:
     arguments: ['@entity_type.manager', '@http_client', '@file.repository', '@logger.channel.default', '@file_system']
   as_webhook_entities.crud_manager:
     class: Drupal\as_webhook_entities\WebhookCrudManager
-    arguments: ['@entity_type.manager', '@logger.channel.default', '@as_webhook_entities.image_importer']
+    arguments: ['@entity_type.manager', '@logger.channel.default', '@as_webhook_entities.image_importer', '@as_webhook_entities.paragraph_tree_builder']
   as_webhook_entities.uuid_lookup:
     class: Drupal\as_webhook_entities\WebhookUuidLookup
     arguments: ['@entity_type.manager']
@@ -13,4 +13,4 @@ services:
   # exists once and the two paths cannot drift apart.
   as_webhook_entities.paragraph_tree_builder:
     class: Drupal\as_webhook_entities\ParagraphTreeBuilder
-    arguments: ['@entity_type.manager', '@as_webhook_entities.image_importer']
+    arguments: ['@entity_type.manager', '@as_webhook_entities.image_importer', '@?entity_reference_revisions.orphan_purger']

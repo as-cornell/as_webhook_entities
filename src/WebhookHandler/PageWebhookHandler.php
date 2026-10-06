@@ -2,6 +2,7 @@
 
 namespace Drupal\as_webhook_entities\WebhookHandler;
 
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\as_webhook_entities\ParagraphTreeBuilder;
 use Drupal\paragraphs\Entity\Paragraph;
@@ -24,9 +25,15 @@ use Drupal\paragraphs\Entity\Paragraph;
  * update.
  *
  * @see \Drupal\as_webhook_entities\ParagraphTreeBuilder
+ * Updates replace the paragraph tree wholesale, and Entity Reference Revisions
+ * never deletes composites a host stops referencing, so every sync would leave
+ * the previous tree behind. finishSave() purges it once the node no longer
+ * points at it, and removes a freshly built tree whose save never happened.
+ *
+ * @see \Drupal\as_webhook_entities\ParagraphTreeBuilder
  * @see \Drupal\as_webhook_entities\WebhookHandler\WebhookHandlerBase
  */
-class PageWebhookHandler extends WebhookHandlerBase {
+class PageWebhookHandler extends WebhookHandlerBase implements WebhookHandlerFinishSaveInterface {
 
   /**
    * Allowed-value translation for field_sidebar_type -> field_page_layout.
@@ -65,6 +72,20 @@ class PageWebhookHandler extends WebhookHandlerBase {
   protected ParagraphTreeBuilder $treeBuilder;
 
   /**
+   * Paragraphs built for the save in progress, top-down.
+   *
+   * @var int[]
+   */
+  protected array $built = [];
+
+  /**
+   * Paragraphs the save in progress replaces, top-down.
+   *
+   * @var int[]
+   */
+  protected array $replaced = [];
+
+  /**
    * Constructs a PageWebhookHandler.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
@@ -92,6 +113,7 @@ class PageWebhookHandler extends WebhookHandlerBase {
    */
   public function applyCreateFields(array &$node_values, object $entity_data, array $domain_schema): void {
     $this->treeBuilder->resetIssues();
+    $this->built = $this->replaced = [];
     $node_values['type'] = $this->bundle;
 
     // field_remote_uuid is the idempotency key for sync. Without it a repeat
@@ -113,6 +135,9 @@ class PageWebhookHandler extends WebhookHandlerBase {
     if ($components) {
       $node_values['field_page_components'] = $components;
     }
+    $this->built = array_merge(
+      $this->treeBuilder->collectTreeIds($components),
+      $this->treeBuilder->collectTreeIds($node_values['field_pano'] ?? []));
 
     $this->logIssues($entity_data);
   }
@@ -122,6 +147,7 @@ class PageWebhookHandler extends WebhookHandlerBase {
    */
   public function applyUpdateFields(object $existing_entity, object $entity_data, array $domain_schema): void {
     $this->treeBuilder->resetIssues();
+    $this->built = $this->replaced = [];
 
     $domains = $this->resolveDomainsFromDepartments($entity_data);
     $existing_entity->set('field_domain_access', $domains);
@@ -131,6 +157,11 @@ class PageWebhookHandler extends WebhookHandlerBase {
     $this->applyPanoField($values, $entity_data, $domains);
     foreach ($values as $name => $value) {
       if ($existing_entity->hasField($name)) {
+        if ($name === 'field_pano' && $existing_entity->getFieldDefinition($name)->getType() === 'entity_reference_revisions') {
+          $this->replaced = array_merge($this->replaced,
+            $this->treeBuilder->collectTreeIds($existing_entity->get($name)->referencedEntities()));
+          $this->built = array_merge($this->built, $this->treeBuilder->collectTreeIds($value));
+        }
         $existing_entity->set($name, $value);
       }
     }
@@ -138,11 +169,30 @@ class PageWebhookHandler extends WebhookHandlerBase {
     // Replace the component tree wholesale. Diffing a nested paragraph tree is
     // not worth the risk of half-updating it, and the source is authoritative.
     if ($existing_entity->hasField('field_page_components')) {
-      $existing_entity->set('field_page_components', $this->treeBuilder->buildTree(
-        (array) ($entity_data->components ?? []), $domains));
+      $this->replaced = array_merge($this->replaced,
+        $this->treeBuilder->collectTreeIds($existing_entity->get('field_page_components')->referencedEntities()));
+      $components = $this->treeBuilder->buildTree(
+        (array) ($entity_data->components ?? []), $domains);
+      $this->built = array_merge($this->built, $this->treeBuilder->collectTreeIds($components));
+      $existing_entity->set('field_page_components', $components);
     }
 
     $this->logIssues($entity_data);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function finishSave(?EntityInterface $entity, bool $saved): void {
+    if ($saved) {
+      // The usage test keeps anything the saved node, or any of its revisions,
+      // still references, so only the tree it let go of is removed.
+      $this->treeBuilder->purgeUnused($this->replaced);
+    }
+    else {
+      $this->treeBuilder->deleteUnattached($this->built);
+    }
+    $this->built = $this->replaced = [];
   }
 
   /**

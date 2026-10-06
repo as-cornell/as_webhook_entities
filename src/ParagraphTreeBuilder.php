@@ -3,6 +3,7 @@
 namespace Drupal\as_webhook_entities;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\entity_reference_revisions\EntityReferenceRevisionsOrphanPurger;
 use Drupal\paragraphs\Entity\Paragraph;
 use Drupal\paragraphs\ParagraphInterface;
 
@@ -97,16 +98,25 @@ class ParagraphTreeBuilder {
   protected ?array $paragraphTypes = NULL;
 
   /**
+   * ERR's orphan purger, or NULL on a site without entity_reference_revisions.
+   */
+  protected ?EntityReferenceRevisionsOrphanPurger $orphanPurger;
+
+  /**
    * Constructs a ParagraphTreeBuilder.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    * @param \Drupal\as_webhook_entities\WebhookImageImporter $image_importer
    *   The image importer service.
+   * @param \Drupal\entity_reference_revisions\EntityReferenceRevisionsOrphanPurger|null $orphan_purger
+   *   ERR's orphan purger. Optional because this package is also installed on
+   *   sites with no paragraphs at all, such as artsci-mediareport.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, WebhookImageImporter $image_importer) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, WebhookImageImporter $image_importer, ?EntityReferenceRevisionsOrphanPurger $orphan_purger = NULL) {
     $this->entityTypeManager = $entity_type_manager;
     $this->imageImporter = $image_importer;
+    $this->orphanPurger = $orphan_purger;
   }
 
   /**
@@ -132,6 +142,94 @@ class ParagraphTreeBuilder {
       }
     }
     return $built;
+  }
+
+  /**
+   * Lists every paragraph in a tree, parents before their children.
+   *
+   * @param \Drupal\paragraphs\ParagraphInterface[] $paragraphs
+   *   Top-level paragraphs, as returned by buildTree() or loaded from a host.
+   *
+   * @return int[]
+   *   Paragraph ids, top-down.
+   */
+  public function collectTreeIds(array $paragraphs): array {
+    $ids = [];
+    foreach ($paragraphs as $paragraph) {
+      if (!$paragraph instanceof ParagraphInterface || !$paragraph->id()) {
+        continue;
+      }
+      $ids[] = (int) $paragraph->id();
+      foreach ($paragraph->getFields() as $field) {
+        if ($field->getFieldDefinition()->getType() === 'entity_reference_revisions') {
+          $ids = array_merge($ids, $this->collectTreeIds($field->referencedEntities()));
+        }
+      }
+    }
+    return $ids;
+  }
+
+  /**
+   * Deletes paragraphs a host no longer references.
+   *
+   * For a tree a host has just replaced. Entity Reference Revisions never
+   * deletes the composites a host stops referencing, so without this every
+   * update would leave the previous tree behind. Uses ERR's own usage test, the
+   * same one its cron purger applies: a paragraph still referenced by any
+   * revision of any host is kept, so revision history stays intact.
+   *
+   * @param int[] $ids
+   *   Paragraph ids, top-down, so each deletion frees the next level.
+   *
+   * @return int
+   *   The number of paragraph revisions deleted.
+   */
+  public function purgeUnused(array $ids): int {
+    if (!$this->orphanPurger || !$ids) {
+      return 0;
+    }
+    $storage = $this->entityTypeManager->getStorage('paragraph');
+    $deleted = 0;
+    foreach ($ids as $id) {
+      $revision_ids = $storage->getQuery()
+        ->allRevisions()
+        ->condition('id', $id)
+        ->sort('revision_id')
+        ->accessCheck(FALSE)
+        ->execute();
+      foreach ($storage->loadMultipleRevisions(array_keys($revision_ids)) as $revision) {
+        if (!$this->orphanPurger->isUsed($revision) && $this->orphanPurger->deleteUnusedRevision($revision)) {
+          $deleted++;
+        }
+      }
+    }
+    return $deleted;
+  }
+
+  /**
+   * Deletes a freshly built tree whose host was never saved with it.
+   *
+   * Paragraphs are saved before their host, so a failed or skipped host save
+   * leaves them with no parent. ERR cannot tell "no parent yet" from "parent
+   * unknown" and keeps such paragraphs forever, so the usage test does not
+   * apply: these were built moments ago for a save that did not happen.
+   *
+   * @param int[] $ids
+   *   Ids from collectTreeIds() on the built tree.
+   *
+   * @return int
+   *   The number of paragraphs deleted.
+   */
+  public function deleteUnattached(array $ids): int {
+    if (!$ids) {
+      return 0;
+    }
+    $storage = $this->entityTypeManager->getStorage('paragraph');
+    $paragraphs = $storage->loadMultiple($ids);
+    if ($paragraphs) {
+      $storage->delete($paragraphs);
+    }
+    return count($paragraphs);
   }
 
   /**

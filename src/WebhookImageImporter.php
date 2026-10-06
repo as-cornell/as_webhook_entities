@@ -40,11 +40,11 @@ class WebhookImageImporter {
   protected const EMBED_VIEW_MODE = 'landscape';
 
   /**
-   * Most same-named files compared byte for byte in one lookup.
+   * Most same-sized files compared byte for byte in one lookup.
    *
-   * Generic names such as headshot.jpg recur, and each comparison hashes a
-   * file on disk, so this bounds the cost. Past the limit the image is simply
-   * stored as new, which is the safe direction to fail.
+   * Each comparison hashes a file on disk, so this bounds the cost. Past the
+   * limit the image is simply stored as new, which is the safe direction to
+   * fail.
    */
   protected const MAX_CONTENT_CANDIDATES = 50;
 
@@ -117,8 +117,7 @@ class WebhookImageImporter {
     // photograph. Including a digest of the URL gives each distinct source its
     // own file while still letting a repeat of the same URL reuse one.
     $key = substr(hash('sha256', $url), 0, 12);
-    $keyed_name = $key . '-' . $filename;
-    $destination = 'public://webhook-images/' . $keyed_name;
+    $destination = 'public://webhook-images/' . $key . '-' . $filename;
 
     // Reuse never rests on a filename alone. Matching any basename anywhere in
     // public:// is how a person named Hamilton was given the illustration from
@@ -126,13 +125,13 @@ class WebhookImageImporter {
     // hamilton.jpg. So there are exactly two ways to reuse a file:
     //
     // 1. One this importer made earlier for the same source URL. The URL
-    //    digest is in the filename, so this is safe without downloading.
-    // 2. A file whose bytes are identical to the download. A same-named file
-    //    is only a candidate, so a different photograph can never be adopted.
+    //    digest prefixes the stored filename, so this needs no download.
+    // 2. A file whose bytes are identical to the download, whatever it is
+    //    called, so a different photograph can never be adopted.
     //
     // Writing to a URL-keyed destination also means EXISTS_REPLACE below can
     // no longer overwrite a different person's photograph.
-    $file = $this->findKeyedFile($keyed_name);
+    $file = $this->findKeyedFile($key, $filename);
     // Files this importer wrote get its default crops. A file adopted by
     // content match belongs to earlier content and is left exactly as it is,
     // because adding a crop where there was none changes how it renders there.
@@ -150,7 +149,7 @@ class WebhookImageImporter {
         }
         $data = $response->getBody()->getContents();
 
-        $file = $this->findIdenticalFile($filename, $data);
+        $file = $this->findIdenticalFile($data);
         if (!$file) {
           $dir = dirname($destination);
           $this->fileSystem->prepareDirectory($dir, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
@@ -342,25 +341,32 @@ class WebhookImageImporter {
    *
    * The filefield_paths module moves every file out of webhook-images into
    * public://YYYY-MM when its media is saved, so the original destination URI
-   * never matches anything. The digest-prefixed name survives the move, in
-   * both the filename column and the final URI, so it is the key to look up.
+   * never matches anything. It also cleans the name on the way, with
+   * pathauto's rules: stop words such as "for" and some punctuation are
+   * dropped, so lsp-students-for-admissions-pano.jpg is stored as
+   * <digest>-lsp-students-admissions-pano.jpg. The digest prefix survives
+   * unchanged, and it is derived from the source URL, so it is the key.
    *
-   * @param string $keyed_name
-   *   The digest-prefixed filename.
+   * @param string $key
+   *   The 12-character URL digest.
+   * @param string $filename
+   *   The sanitized source filename, for its extension.
    *
    * @return \Drupal\file\FileInterface|null
    *   The file, preferring one that already backs a media entity.
    */
-  protected function findKeyedFile(string $keyed_name): ?FileInterface {
+  protected function findKeyedFile(string $key, string $filename): ?FileInterface {
+    $extension = pathinfo($filename, PATHINFO_EXTENSION);
     $fids = $this->entityTypeManager->getStorage('file')
       ->getQuery()
-      ->condition('filename', $keyed_name)
+      ->condition('filename', $key . '-%', 'LIKE')
       ->sort('fid')
       ->accessCheck(FALSE)
       ->execute();
     $files = array_filter(
       $fids ? $this->entityTypeManager->getStorage('file')->loadMultiple($fids) : [],
-      fn(FileInterface $file) => file_exists($file->getFileUri())
+      fn(FileInterface $file) => strcasecmp(pathinfo($file->getFilename(), PATHINFO_EXTENSION), $extension) === 0
+        && file_exists($file->getFileUri())
     );
     return $this->preferMediaBacked($files);
   }
@@ -369,29 +375,24 @@ class WebhookImageImporter {
    * Finds an existing file whose bytes are identical to a download.
    *
    * Covers images stored before files were keyed on their URL, such as the
-   * June 2026 article import, and the same image reached by two URLs. The name
-   * only selects candidates; identity is decided by size and SHA-256 of the
-   * content, so a different picture with the same name is never reused.
+   * June 2026 article import, and the same image reached by two URLs.
+   * Candidates are chosen by byte size, not by name: stored names have been
+   * rewritten by filefield_paths, and a name match is how a different picture
+   * was once adopted. Identity is decided by SHA-256 of the content alone.
    *
-   * @param string $filename
-   *   The sanitized source filename.
    * @param string $data
    *   The downloaded bytes.
    *
    * @return \Drupal\file\FileInterface|null
    *   The matching file, preferring one that already backs a media entity.
    */
-  protected function findIdenticalFile(string $filename, string $data): ?FileInterface {
+  protected function findIdenticalFile(string $data): ?FileInterface {
     $storage = $this->entityTypeManager->getStorage('file');
-    $query = $storage->getQuery()->accessCheck(FALSE);
-    // The bare name, or the same name behind any 12-character digest.
-    $like = str_repeat('_', 12) . '-' . addcslashes($filename, '\\%_');
-    $query->condition($query->orConditionGroup()
-      ->condition('filename', $filename)
-      ->condition('filename', $like, 'LIKE'));
-    $fids = $query->condition('filesize', strlen($data))
+    $fids = $storage->getQuery()
+      ->condition('filesize', strlen($data))
       ->sort('fid')
       ->range(0, static::MAX_CONTENT_CANDIDATES)
+      ->accessCheck(FALSE)
       ->execute();
     if (!$fids) {
       return NULL;
