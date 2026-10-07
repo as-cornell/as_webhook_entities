@@ -98,6 +98,24 @@ class ParagraphTreeBuilder {
   protected ?array $paragraphTypes = NULL;
 
   /**
+   * Ids of every paragraph saved since the last takeSaved() call.
+   *
+   * A tree is saved bottom-up as it is built, so if building fails part way
+   * the paragraphs already saved are not in any returned tree. This list is
+   * how a caller finds and removes them.
+   *
+   * @var int[]
+   */
+  protected array $saved = [];
+
+  /**
+   * Allowed vocabularies per "bundle.field" context, cached per request.
+   *
+   * @var array<string, string[]>
+   */
+  protected array $vocabularies = [];
+
+  /**
    * ERR's orphan purger, or NULL on a site without entity_reference_revisions.
    */
   protected ?EntityReferenceRevisionsOrphanPurger $orphanPurger;
@@ -292,6 +310,7 @@ class ParagraphTreeBuilder {
 
     $paragraph = Paragraph::create($values);
     $paragraph->save();
+    $this->saved[] = (int) $paragraph->id();
     return $paragraph;
   }
 
@@ -379,11 +398,17 @@ class ParagraphTreeBuilder {
     switch ($item['_ref']) {
       case 'taxonomy_term':
         // By name, never by tid or vid: the vocabularies are renamed between
-        // the two sites, so only the human label is portable.
-        $tid = $this->lookupTermByName((string) ($item['name'] ?? ''));
+        // the two sites, so only the human label is portable. But only within
+        // the vocabularies the target field allows. The same name exists in
+        // several vocabularies here ("Chemistry" is both a department and an
+        // old majors term), and paragraphs are saved without validation, so
+        // a match from the wrong vocabulary would be stored silently.
+        $vids = $this->allowedVocabularies($context);
+        $tid = $this->lookupTermByName((string) ($item['name'] ?? ''), $vids);
         if ($tid === NULL) {
-          $this->issues[] = sprintf('unresolved term "%s" (source vocab %s) for %s',
-            $item['name'] ?? '?', $item['vid'] ?? '?', $context);
+          $this->issues[] = sprintf('unresolved term "%s" (source vocab %s) for %s%s',
+            $item['name'] ?? '?', $item['vid'] ?? '?', $context,
+            $vids ? ' in ' . implode('/', $vids) : '');
           return NULL;
         }
         return ['target_id' => $tid];
@@ -499,6 +524,18 @@ class ParagraphTreeBuilder {
   }
 
   /**
+   * Returns and clears the ids of paragraphs saved since the last call.
+   *
+   * @return int[]
+   *   Paragraph ids, including any from a build that failed part way.
+   */
+  public function takeSaved(): array {
+    $saved = $this->saved;
+    $this->saved = [];
+    return $saved;
+  }
+
+  /**
    * Clears collected issues without reading them.
    */
   public function resetIssues(): void {
@@ -506,7 +543,7 @@ class ParagraphTreeBuilder {
   }
 
   /**
-   * Looks up a single term id by name, across any vocabulary.
+   * Looks up a single term id by name, within the given vocabularies.
    *
    * Name-based on purpose: see the class docblock. Duplicated in spirit from
    * WebhookHandlerBase, which cannot be reused here because this is a service
@@ -515,22 +552,54 @@ class ParagraphTreeBuilder {
    *
    * @param string $name
    *   The term name.
+   * @param string[] $vids
+   *   Vocabularies to search; empty searches all of them.
    *
    * @return int|null
-   *   The term id, or NULL when there is no match.
+   *   The lowest matching term id, or NULL when there is no match.
    */
-  protected function lookupTermByName(string $name): ?int {
+  protected function lookupTermByName(string $name, array $vids = []): ?int {
     $name = trim($name);
     if ($name === '') {
       return NULL;
     }
-    $terms = $this->entityTypeManager->getStorage('taxonomy_term')
-      ->loadByProperties(['name' => $name]);
-    if (!$terms) {
-      return NULL;
+    $query = $this->entityTypeManager->getStorage('taxonomy_term')->getQuery()
+      ->condition('name', $name)
+      ->sort('tid')
+      ->range(0, 1)
+      ->accessCheck(FALSE);
+    if ($vids) {
+      $query->condition('vid', $vids, 'IN');
     }
-    $term = reset($terms);
-    return (int) $term->id();
+    $tids = $query->execute();
+    return $tids ? (int) reset($tids) : NULL;
+  }
+
+  /**
+   * Returns the vocabularies a paragraph field may reference.
+   *
+   * @param string $context
+   *   The "bundle.field" context passed down from buildParagraph().
+   *
+   * @return string[]
+   *   Vocabulary ids, or an empty array when the context is not a paragraph
+   *   field or the field does not restrict vocabularies. Node-level contexts
+   *   carry no bundle, so they keep the unrestricted lookup.
+   */
+  protected function allowedVocabularies(string $context): array {
+    if (!array_key_exists($context, $this->vocabularies)) {
+      $vids = [];
+      $parts = explode('.', $context);
+      if (count($parts) === 2) {
+        $field = $this->entityTypeManager->getStorage('field_config')
+          ->load('paragraph.' . $parts[0] . '.' . $parts[1]);
+        if ($field && $field->getSetting('target_type') === 'taxonomy_term') {
+          $vids = array_values(array_keys($field->getSetting('handler_settings')['target_bundles'] ?? []));
+        }
+      }
+      $this->vocabularies[$context] = $vids;
+    }
+    return $this->vocabularies[$context];
   }
 
   /**
