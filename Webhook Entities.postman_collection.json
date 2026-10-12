@@ -219,7 +219,7 @@
 		{
 			"key": "webhook_token",
 			"value": "replace-with-token-from-key-module",
-			"description": "Authorization token configured in the Key module on the receiving site under key ID 'as_webhook_entities_token'. Find it at /admin/config/services/webhook-entities."
+			"description": "Authorization token configured in the Key module on the receiving site under key ID 'as_webhook_entities_token'. Find it at /admin/config/as_webhook_entities/settings."
 		}
 	],
 	"protocolProfileBehavior": {}

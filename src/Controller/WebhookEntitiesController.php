@@ -124,7 +124,7 @@ class WebhookEntitiesController extends ControllerBase {
 
     // If no token is configured, deny access.
     if (empty($stored_token)) {
-      \Drupal::logger('as_webhook_entities')->error('Webhook authorization token is not configured. Configure it at /admin/config/services/webhook-entities');
+      \Drupal::logger('as_webhook_entities')->error('Webhook authorization token is not configured. Configure it at /admin/config/as_webhook_entities/settings');
       return AccessResult::forbidden('Authorization token not configured');
     }
 
