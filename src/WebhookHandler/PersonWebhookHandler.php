@@ -43,6 +43,30 @@ class PersonWebhookHandler extends WebhookHandlerBase {
   }
 
   /**
+   * Person types that belong on as.cornell.edu.
+   *
+   * Graduate Student and Department Staff appear on department sites only, as
+   * does Other Faculty unless included in the A&S directory. A payload with no
+   * person type is kept off as.cornell.edu too.
+   */
+  const AS_DOMAIN_PERSON_TYPES = [
+    'Faculty',
+    'College Staff',
+    'Advisory Council',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  public function belongsOnAsDomain(object $entity_data): bool {
+    $person_type = $entity_data->field_person_type ?? '';
+    if (in_array($person_type, self::AS_DOMAIN_PERSON_TYPES, TRUE)) {
+      return TRUE;
+    }
+    return $person_type === 'Other Faculty' && !empty($entity_data->field_as_directory);
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function applyCreateFields(array &$node_values, object $entity_data, array $domain_schema): void {
@@ -164,6 +188,11 @@ class PersonWebhookHandler extends WebhookHandlerBase {
       // Guarded so the shared module works on sites without domain_access.
       if ($existing_entity->hasField('field_domain_access')) {
         $existing_domains = array_column($existing_entity->get('field_domain_access')->getValue(), 'target_id');
+        // The node still carries its pre-update domains here, so a stale
+        // as_cornell_edu would otherwise be copied back onto the media.
+        if (!$this->belongsOnAsDomain($entity_data)) {
+          $existing_domains = array_diff($existing_domains, ['as_cornell_edu']);
+        }
         $domains = array_unique(array_merge($domains, $existing_domains));
       }
       $mid = $this->imageImporter->importImage($entity_data->field_portrait_image_path, $alt, $domains);

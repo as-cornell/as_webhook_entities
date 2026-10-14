@@ -56,4 +56,19 @@ interface WebhookHandlerInterface {
    */
   public function getChangedTime(object $entity_data): ?int;
 
+  /**
+   * Whether the entity belongs on the as_cornell_edu domain.
+   *
+   * On the departments schema every entity is tagged
+   * departments_as_cornell_edu; this decides whether as_cornell_edu is added
+   * alongside it.
+   *
+   * @param object $entity_data
+   *   The decoded webhook payload entity data object.
+   *
+   * @return bool
+   *   TRUE to tag the entity as_cornell_edu, FALSE otherwise.
+   */
+  public function belongsOnAsDomain(object $entity_data): bool;
+
 }

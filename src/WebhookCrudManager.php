@@ -313,7 +313,7 @@ class WebhookCrudManager {
     }
     if ($is_departments) {
       sort($daarray);
-      array_unshift($daarray, 'departments_as_cornell_edu', 'as_cornell_edu');
+      array_unshift($daarray, ...$this->baseDomains($entity_data));
       $node_values['field_domain_access'] = $daarray;
     }
   }
@@ -355,9 +355,30 @@ class WebhookCrudManager {
       }
     }
     if ($is_departments && ($type !== 'term' || !empty($daarray))) {
-      array_unshift($daarray, 'departments_as_cornell_edu', 'as_cornell_edu');
+      array_unshift($daarray, ...$this->baseDomains($entity_data));
       $existing_entity->set($type === 'term' ? 'domain_access' : 'field_domain_access', $daarray);
     }
+  }
+
+  /**
+   * Returns the domains every entity on the departments schema is tagged with.
+   *
+   * Always departments_as_cornell_edu; as_cornell_edu only when the entity's
+   * handler says it belongs there, so department-only people stay off
+   * as.cornell.edu. Types without a handler keep both.
+   *
+   * @param object $entity_data
+   *   The decoded webhook payload entity data object.
+   *
+   * @return array
+   *   Domain target ID strings.
+   */
+  private function baseDomains(object $entity_data): array {
+    $domains = ['departments_as_cornell_edu'];
+    if ($this->getHandler($entity_data->type)?->belongsOnAsDomain($entity_data) ?? TRUE) {
+      $domains[] = 'as_cornell_edu';
+    }
+    return $domains;
   }
 
   /**
