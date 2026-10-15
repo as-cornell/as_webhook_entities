@@ -50,6 +50,13 @@ class WebhookCrudManager {
   protected array $handlers;
 
   /**
+   * Finds references that keep a copy from being deleted.
+   *
+   * @var \Drupal\as_webhook_entities\WebhookReferenceChecker|null
+   */
+  protected ?WebhookReferenceChecker $referenceChecker;
+
+  /**
    * Constructs a WebhookCrudManager object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -60,10 +67,13 @@ class WebhookCrudManager {
    *   The webhook image importer service.
    * @param \Drupal\as_webhook_entities\ParagraphTreeBuilder|null $tree_builder
    *   The shared paragraph tree builder, for the page handlers.
+   * @param \Drupal\as_webhook_entities\WebhookReferenceChecker|null $reference_checker
+   *   Finds references that keep a copy from being deleted.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, LoggerInterface $logger, WebhookImageImporter $imageImporter, ?ParagraphTreeBuilder $tree_builder = NULL) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, LoggerInterface $logger, WebhookImageImporter $imageImporter, ?ParagraphTreeBuilder $tree_builder = NULL, ?WebhookReferenceChecker $reference_checker = NULL) {
     $this->entityTypeManager = $entity_type_manager;
     $this->logger = $logger;
+    $this->referenceChecker = $reference_checker;
     $this->handlers = [
       'person'              => new PersonWebhookHandler($entity_type_manager, $imageImporter),
       'article'             => new ArticleWebhookHandler($entity_type_manager, $imageImporter),
@@ -271,14 +281,35 @@ class WebhookCrudManager {
   /**
    * Deletes an entity received via webhook notification.
    *
+   * A copy that something on this site still refers to is kept and the delete
+   * logged instead, so a record removed upstream cannot break the pages that
+   * use it here (the media report's credits, artsci-as related people). The
+   * kept copy no longer receives updates; remove its references and delete it
+   * by hand if it should go.
+   *
    * @param object $existing_entity
    *   The existing Drupal entity to delete.
+   *
+   * @return bool
+   *   TRUE when deleted, FALSE when kept because something refers to it.
    */
   public function deleteEntity($existing_entity) {
+    $references = $this->referenceChecker ? $this->referenceChecker->referencesTo($existing_entity) : [];
+    if ($references) {
+      $this->logger->warning('Kept @type @id (@label) instead of deleting it via webhook notification: still referred to by @count item(s): @refs', [
+        '@type' => $existing_entity->getEntityTypeId(),
+        '@id' => $existing_entity->id(),
+        '@label' => $existing_entity->label(),
+        '@count' => count($references),
+        '@refs' => implode(', ', array_slice($references, 0, 10)) . (count($references) > 10 ? ', ...' : ''),
+      ]);
+      return FALSE;
+    }
     $this->logger->notice('Entity @id deleted via webhook notification.', [
       '@id' => $existing_entity->id(),
     ]);
     $existing_entity->delete();
+    return TRUE;
   }
 
   /**

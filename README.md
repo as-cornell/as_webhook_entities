@@ -51,6 +51,7 @@ Receives webhook notifications from remote systems and creates, updates, or dele
 - With "Process notifications as soon as they arrive" on (config key `crontrigger`), the queue is drained in batches right after the listener responds, and the batch's nodes are indexed in Search API; see `WebhookQueueDrainer`
 - A drain stops claiming after 40 seconds and, if items remain, posts an empty body to its own listener to start the next one, so nothing waits for cron
 - Cron still drains the queue (30 seconds per run), which is the only processing when the setting is off
+- A delete keeps the local copy, and logs a warning instead, while anything on the site still refers to it (entity reference fields on nodes, paragraphs still on a page, blocks and terms); see `WebhookReferenceChecker`. A kept copy no longer receives updates
 - Logs create/update/delete operations as `as_webhook_entities`
 
 ## ARCHITECTURE
