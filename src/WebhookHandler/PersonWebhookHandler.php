@@ -52,7 +52,6 @@ class PersonWebhookHandler extends WebhookHandlerBase {
   const AS_DOMAIN_PERSON_TYPES = [
     'Faculty',
     'College Staff',
-    'Advisory Council',
   ];
 
   /**
