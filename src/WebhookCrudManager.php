@@ -385,6 +385,12 @@ class WebhookCrudManager {
         $existing_entity->set('field_related_department_program', $dparray);
       }
     }
+    // An explicitly empty list means the sender removed every department:
+    // clear them, or the copy keeps departments its domains no longer match.
+    // Names that match no term here still leave the field alone.
+    elseif (isset($entity_data->field_departments_programs) && (array) $entity_data->field_departments_programs === [] && $type !== 'term' && $type !== 'media_report_entry' && $existing_entity->hasField('field_departments_programs')) {
+      $existing_entity->set('field_departments_programs', []);
+    }
     if ($is_departments && ($type !== 'term' || !empty($daarray))) {
       array_unshift($daarray, ...$this->baseDomains($entity_data));
       $existing_entity->set($type === 'term' ? 'domain_access' : 'field_domain_access', $daarray);
