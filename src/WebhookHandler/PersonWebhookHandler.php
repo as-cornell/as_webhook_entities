@@ -45,24 +45,25 @@ class PersonWebhookHandler extends WebhookHandlerBase {
   /**
    * Person types that belong on as.cornell.edu.
    *
-   * Graduate Student and Department Staff appear on department sites only, as
-   * does Other Faculty unless included in the A&S directory. A payload with no
-   * person type is kept off as.cornell.edu too.
+   * By key (as-cornell/backlog#12). Graduate Student and Department Staff
+   * appear on department sites only, as does Other Faculty unless included in
+   * the A&S directory. A payload with no person type is kept off
+   * as.cornell.edu too.
    */
   const AS_DOMAIN_PERSON_TYPES = [
-    'Faculty',
-    'College Staff',
+    'faculty',
+    'college_staff',
   ];
 
   /**
    * {@inheritdoc}
    */
   public function belongsOnAsDomain(object $entity_data): bool {
-    $person_type = $entity_data->field_person_type ?? '';
+    $person_type = self::personTypeKey($entity_data);
     if (in_array($person_type, self::AS_DOMAIN_PERSON_TYPES, TRUE)) {
       return TRUE;
     }
-    return $person_type === 'Other Faculty' && !empty($entity_data->field_as_directory);
+    return $person_type === 'other_faculty' && !empty($entity_data->field_as_directory);
   }
 
   /**
@@ -102,7 +103,7 @@ class PersonWebhookHandler extends WebhookHandlerBase {
     }
 
     // field_person_type taxonomy lookup.
-    $tids = $this->lookupTermTidsByNameInVocab([$entity_data->field_person_type ?? ''], 'person_type');
+    $tids = $this->lookupPersonTypeTids($entity_data, 'person_type');
     if (!empty($tids)) {
       $node_values['field_person_type'] = $tids;
     }
@@ -221,7 +222,7 @@ class PersonWebhookHandler extends WebhookHandlerBase {
 
     // field_person_type taxonomy lookup.
     if (!empty($entity_data->field_person_type)) {
-      $tids = $this->lookupTermTidsByNameInVocab([$entity_data->field_person_type], 'person_type');
+      $tids = $this->lookupPersonTypeTids($entity_data, 'person_type');
       if (!empty($tids)) {
         $existing_entity->set('field_person_type', $tids);
       }

@@ -28,7 +28,7 @@ class MediaReportPersonWebhookHandler extends WebhookHandlerBase {
     $node_values['field_netid'] = $entity_data->netid ?? NULL;
 
     // field_person_type taxonomy lookup.
-    $tids = $this->lookupTermTidsByName([$entity_data->field_person_type ?? '']);
+    $tids = $this->lookupPersonTypeTids($entity_data);
     if (!empty($tids)) {
       $node_values['field_person_type'] = $tids;
     }
@@ -53,7 +53,7 @@ class MediaReportPersonWebhookHandler extends WebhookHandlerBase {
 
     // field_person_type taxonomy lookup.
     if (!empty($entity_data->field_person_type)) {
-      $tids = $this->lookupTermTidsByName([$entity_data->field_person_type]);
+      $tids = $this->lookupPersonTypeTids($entity_data);
       if (!empty($tids)) {
         $existing_entity->set('field_person_type', $tids);
       }

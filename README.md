@@ -87,6 +87,23 @@ as_webhook_entities/
 | `media_report_person` | `node:person` | `MediaReportPersonWebhookHandler` |
 | `term` | `taxonomy_term` | `TermWebhookHandler` |
 
+### Person type keys
+
+Person types are matched by key, not name, so a type can be renamed without
+breaking the sync (as-cornell/backlog#12). Senders on as_webhook_update 2.3.0
+and later send `field_person_type_key` (`faculty`, `other_faculty`, `emeritus`,
+`graduate_student`, `department_staff`, `college_staff`) beside the label in
+`field_person_type`.
+
+- The as.cornell.edu domain check (`PersonWebhookHandler::belongsOnAsDomain()`)
+  uses the key. For an older payload the key is derived from the label.
+- The person type term is found by `field_person_type_key` when this site's
+  terms have that field, and by name otherwise
+  (`WebhookHandlerBase::lookupPersonTypeTids()`).
+
+Add and fill `field_person_type_key` on this site's person type terms before
+anyone renames a type here or on artsci-people.
+
 ### Adding a New Entity Type
 
 1. Create a class in `src/WebhookHandler/` extending `WebhookHandlerBase`

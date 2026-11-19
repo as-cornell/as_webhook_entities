@@ -124,6 +124,57 @@ abstract class WebhookHandlerBase implements WebhookHandlerInterface {
   }
 
   /**
+   * Gets the person type key a payload carries.
+   *
+   * Senders on as_webhook_update 2.3.0 and later send field_person_type_key
+   * beside the label (as-cornell/backlog#12). For an older payload the key is
+   * derived from the label the same way the sender derives it ("Other
+   * Faculty" gives other_faculty), which is what the keys equal.
+   *
+   * @param object $entity_data
+   *   The decoded payload.
+   *
+   * @return string|null
+   *   The key, or NULL when the payload has no person type.
+   */
+  public static function personTypeKey(object $entity_data): ?string {
+    if (!empty($entity_data->field_person_type_key)) {
+      return trim((string) $entity_data->field_person_type_key);
+    }
+    $key = trim(preg_replace('/[^a-z0-9]+/', '_', strtolower((string) ($entity_data->field_person_type ?? ''))), '_');
+    return $key === '' ? NULL : $key;
+  }
+
+  /**
+   * Looks up the person type term for a payload, by key first, then by name.
+   *
+   * Matching the key lets the sender and this site rename a person type
+   * independently. The name is the fallback while this site's terms have no
+   * field_person_type_key yet, or an old sender sends no key.
+   *
+   * @param object $entity_data
+   *   The decoded payload.
+   * @param string|null $vid
+   *   The vocabulary to look in, or NULL for any.
+   *
+   * @return array
+   *   Term IDs, or an empty array.
+   */
+  protected function lookupPersonTypeTids(object $entity_data, ?string $vid = NULL): array {
+    $key = $entity_data->field_person_type_key ?? NULL;
+    // Querying a field the site does not have yet would throw.
+    if ($key && $this->entityTypeManager->getStorage('field_storage_config')->load('taxonomy_term.field_person_type_key')) {
+      $properties = ['field_person_type_key' => $key] + ($vid ? ['vid' => $vid] : []);
+      $tids = array_keys($this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties($properties));
+      if ($tids) {
+        return $tids;
+      }
+    }
+    $name = $entity_data->field_person_type ?? '';
+    return $vid ? $this->lookupTermTidsByNameInVocab([$name], $vid) : $this->lookupTermTidsByName([$name]);
+  }
+
+  /**
    * Looks up taxonomy term tids by a field property and array of values.
    *
    * @param string $field
