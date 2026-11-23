@@ -104,6 +104,21 @@ and later send `field_person_type_key` (`faculty`, `other_faculty`, `emeritus`,
 Add and fill `field_person_type_key` on this site's person type terms before
 anyone renames a type here or on artsci-people.
 
+### The A&S directory and the as.cornell.edu domain
+
+artsci-people decides whether a person is in the A&S directory (Tenure Stream
+or RTE Faculty with an A&S college, or College Staff, while Lifecycle is
+Active) and sends the answer as `in_as_directory` (as_webhook_update, as-cornell/backlog#5).
+`PersonWebhookHandler::belongsOnAsDomain()` follows it: in the directory adds
+the `as_cornell_edu` domain, out of it leaves only the department domains. The
+domains are replaced on every update, so someone who leaves the directory
+loses as.cornell.edu on their next update. A payload without
+`in_as_directory`, from an older sender, falls back to the person type and the
+Include in A&S directory checkbox.
+
+The Exclude from directory checkbox is no longer copied; nothing on the
+receiving sites read it.
+
 ### Adding a New Entity Type
 
 1. Create a class in `src/WebhookHandler/` extending `WebhookHandlerBase`

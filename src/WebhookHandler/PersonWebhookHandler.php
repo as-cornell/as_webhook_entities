@@ -43,11 +43,13 @@ class PersonWebhookHandler extends WebhookHandlerBase {
   }
 
   /**
-   * Person types that belong on as.cornell.edu.
+   * Person types that belong on as.cornell.edu, for payloads without the rule.
    *
-   * By key (as-cornell/backlog#12). Graduate Student and Department Staff
-   * appear on department sites only, as does Other Faculty unless included in
-   * the A&S directory. A payload with no person type is kept off
+   * By key (as-cornell/backlog#12). Only used when a payload carries no
+   * in_as_directory, i.e. one sent by an as_webhook_update older than the A&S
+   * directory rule (as-cornell/backlog#5). Graduate Student and Department
+   * Staff appear on department sites only, as does Other Faculty unless
+   * included in the A&S directory. A payload with no person type is kept off
    * as.cornell.edu too.
    */
   const AS_DOMAIN_PERSON_TYPES = [
@@ -57,8 +59,18 @@ class PersonWebhookHandler extends WebhookHandlerBase {
 
   /**
    * {@inheritdoc}
+   *
+   * The people site decides the A&S directory rule (Tenure Stream or RTE
+   * Faculty with an A&S college, or College Staff, while Lifecycle is Active)
+   * and sends the answer as in_as_directory, so this site follows it without
+   * knowing the rule (as-cornell/backlog#5). A payload without it, from an
+   * older sender, falls back to the person type and the Include in A&S
+   * directory checkbox.
    */
   public function belongsOnAsDomain(object $entity_data): bool {
+    if (property_exists($entity_data, 'in_as_directory')) {
+      return (bool) $entity_data->in_as_directory;
+    }
     $person_type = self::personTypeKey($entity_data);
     if (in_array($person_type, self::AS_DOMAIN_PERSON_TYPES, TRUE)) {
       return TRUE;
@@ -89,7 +101,6 @@ class PersonWebhookHandler extends WebhookHandlerBase {
     $node_values['field_summary'] = $this->decodePlainText($entity_data->field_summary ?? NULL);
     $node_values['field_primary_college'] = $this->decodePlainText($entity_data->field_primary_college ?? NULL);
     $node_values['field_affiliated_colleges'] = $entity_data->field_affiliated_colleges ?? [];
-    $node_values['field_exclude_directory'] = (bool) ($entity_data->field_exclude_directory ?? FALSE);
     $node_values['field_hide_contact_info'] = (bool) ($entity_data->field_hide_contact_info ?? FALSE);
 
     if (!empty($entity_data->field_body)) {
@@ -209,7 +220,6 @@ class PersonWebhookHandler extends WebhookHandlerBase {
     $existing_entity->set('field_primary_college', $this->decodePlainText($entity_data->field_primary_college ?? NULL));
     $existing_entity->set('field_affiliated_colleges', $entity_data->field_affiliated_colleges ?? []);
     $existing_entity->set('field_job_title', $this->decodePlainText($entity_data->field_job_title ?: NULL));
-    $existing_entity->set('field_exclude_directory', (bool) ($entity_data->field_exclude_directory ?? FALSE));
     $existing_entity->set('field_hide_contact_info', (bool) ($entity_data->field_hide_contact_info ?? FALSE));
 
     // field_primary_department lookup.
