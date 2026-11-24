@@ -43,39 +43,17 @@ class PersonWebhookHandler extends WebhookHandlerBase {
   }
 
   /**
-   * Person types that belong on as.cornell.edu, for payloads without the rule.
-   *
-   * By key (as-cornell/backlog#12). Only used when a payload carries no
-   * in_as_directory, i.e. one sent by an as_webhook_update older than the A&S
-   * directory rule (as-cornell/backlog#5). Graduate Student and Department
-   * Staff appear on department sites only, as does Other Faculty unless
-   * included in the A&S directory. A payload with no person type is kept off
-   * as.cornell.edu too.
-   */
-  const AS_DOMAIN_PERSON_TYPES = [
-    'faculty',
-    'college_staff',
-  ];
-
-  /**
    * {@inheritdoc}
    *
    * The people site decides the A&S directory rule (Tenure Stream or RTE
    * Faculty with an A&S college, or College Staff, while Lifecycle is Active)
    * and sends the answer as in_as_directory, so this site follows it without
-   * knowing the rule (as-cornell/backlog#5). A payload without it, from an
-   * older sender, falls back to the person type and the Include in A&S
-   * directory checkbox.
+   * knowing the rule (as-cornell/backlog#5). A payload without it is kept off
+   * as.cornell.edu: every sender since as_webhook_update 2.4.0 includes it,
+   * and the checkbox the old fallback read has been removed.
    */
   public function belongsOnAsDomain(object $entity_data): bool {
-    if (property_exists($entity_data, 'in_as_directory')) {
-      return (bool) $entity_data->in_as_directory;
-    }
-    $person_type = self::personTypeKey($entity_data);
-    if (in_array($person_type, self::AS_DOMAIN_PERSON_TYPES, TRUE)) {
-      return TRUE;
-    }
-    return $person_type === 'other_faculty' && !empty($entity_data->field_as_directory);
+    return !empty($entity_data->in_as_directory);
   }
 
   /**
@@ -126,8 +104,6 @@ class PersonWebhookHandler extends WebhookHandlerBase {
         $node_values['field_primary_department'] = $tids;
       }
     }
-
-    $node_values['field_as_directory'] = (bool) ($entity_data->field_as_directory ?? FALSE);
 
     // field_link from links array.
     if (!empty($entity_data->field_links)) {
@@ -237,8 +213,6 @@ class PersonWebhookHandler extends WebhookHandlerBase {
         $existing_entity->set('field_person_type', $tids);
       }
     }
-
-    $existing_entity->set('field_as_directory', (bool) ($entity_data->field_as_directory ?? FALSE));
 
     // Domain: 'departments' only — academic_role.
     if (($domain_schema['schema'] ?? '') === 'departments') {

@@ -113,11 +113,11 @@ Active) and sends the answer as `in_as_directory` (as_webhook_update, as-cornell
 the `as_cornell_edu` domain, out of it leaves only the department domains. The
 domains are replaced on every update, so someone who leaves the directory
 loses as.cornell.edu on their next update. A payload without
-`in_as_directory`, from an older sender, falls back to the person type and the
-Include in A&S directory checkbox.
+`in_as_directory` is kept off as.cornell.edu.
 
-The Exclude from directory checkbox is no longer copied; nothing on the
-receiving sites read it.
+The Include in A&S directory and Exclude from directory checkboxes
+(`field_as_directory`, `field_exclude_directory`) are no longer copied, and the
+fields have been removed from every site (24 November 2026).
 
 ### Adding a New Entity Type
 
